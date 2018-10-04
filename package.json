@@ -1,11 +1,21 @@
 {
   "name": "p2p-lobby",
   "version": "0.0.1",
-  "dependencies": {},
+  "scripts": {
+    "bundle": "browserify --external ipfs dist/index.js -o dist/bundle.js"
+  },
+  "files": [
+    "dist/bundle.js",
+    "dist/bundle.min.js"
+  ],
+  "dependencies": {
+    "ipfs": "^0.32.3"
+  },
   "devDependencies": {
+    "@types/events": "^1.2.0",
+    "@types/node": "^10.11.4",
     "browserify": "^16.2.3",
-    "ipfs": "^0.32.3",
-    "ipfs-pubsub-room": "^1.4.0",
+    "strict-event-emitter-types": "^2.0.0",
     "typescript": "^3.1.1"
   }
 }
