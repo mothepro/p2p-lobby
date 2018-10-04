@@ -9,7 +9,7 @@ $ npm i p2p-lobby
 ## Use in the browser
 Bundle with browserify
 ```bash
-$ npm run bundle
+$ npm run build
 ```
 
 You can also load it using a `<script>` using the unpkg CDN or the jsDelivr CDN. Inserting one of the following lines will make a Ipfs object available in the global namespace.
