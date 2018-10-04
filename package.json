@@ -1,6 +1,7 @@
 {
   "name": "p2p-lobby",
   "version": "0.0.1",
+  "description": "A type safe lobby system built on IPFS",
   "scripts": {
     "bundle": "browserify --external ipfs dist/index.js -o dist/bundle.js"
   },
