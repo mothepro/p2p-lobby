@@ -1,25 +1,10 @@
-// Helper Types
-type Constructor<Instance> = { new(): Instance }
-type UglyCallback<T> = (err: Error, ret: T) => void
-
 declare module 'ipfs' {
     import StrictEventEmitter from 'strict-event-emitter-types'
     import {EventEmitter} from 'events'
     import {Buffer} from 'buffer'
-
-    type datastoreFs = any
-
-    class Repo {
-        constructor(path: string, options?: {
-            lock: string
-            storageBackends: {
-                root: datastoreFs
-                blocks: datastoreFs
-                keys: datastoreFs
-                datastore: datastoreFs
-            }
-        })
-    }
+    import {Repo} from 'ipfs-repo'
+    type Constructor<Instance> = { new(): Instance }
+    type UglyCallback<T> = (err: Error, ret: T) => void
 
     class Multiaddr {
         constructor(str: string)
@@ -84,39 +69,46 @@ declare module 'ipfs' {
 
     interface IPFSConstructorParams {
         repo: string | Repo
+        repoOwner?: boolean
         init?: boolean | {
-            emptyRepo: boolean
-            bits: number
-            privateKey: string | PeerId
-            pass: string
+            emptyRepo?: boolean
+            bits?: number
+            privateKey?: string | PeerId
+            pass?: string
         }
         start?: boolean
         pass?: string
         relay?: {
-            enabled: boolean
-            hop: {
-                enabled: boolean
-                active: boolean
+            enabled?: boolean
+            hop?: {
+                enabled?: boolean
+                active?: boolean
             }
         }
         preload?: {
-            enabled: boolean
-            addresses: Multiaddr[]
+            enabled?: boolean
+            addresses?: Multiaddr[]
         }
         EXPERIMENTAL?: {
-            pubsub: boolean
-            sharding: boolean
-            dht: boolean
+            pubsub?: boolean
+            sharding?: boolean
+            dht?: boolean
         }
         modules?: {
-            transport: any // libp2p.Transport
-            peerDiscovery: any // libp2p.PeerDiscovery
+            transport?: any // libp2p.Transport
+            peerDiscovery?: any // libp2p.PeerDiscovery
         }
         config?: {
-            peerDiscovery: {
+            Addresses?: {
+                Swarm?: Multiaddr[] | string[]
+                API?: Multiaddr | string
+                Gateway?: Multiaddr | string
+            }
+            Bootstrap?: string[]
+            peerDiscovery?: {
                 [peerDiscoveryTag: string]: {
-                    enabled: boolean
-                    config: any
+                    enabled?: boolean
+                    config?: any
                 }
             }
         }

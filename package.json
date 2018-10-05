@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "description": "A type safe lobby system built on IPFS",
   "scripts": {
-    "bundle": "browserify --external ipfs dist/index.js -o dist/bundle.js",
+    "bundle": "browserify --external ipfs,ipfs-repo dist/index.js -o dist/bundle.js",
     "optimize": "browserify -g uglifyify dist/bundle.js > dist/bundle.min.js",
     "build": "npm run bundle && npm run optimize"
   },
@@ -13,6 +13,7 @@
   ],
   "dependencies": {
     "ipfs": "^0.32.3",
+    "ipfs-repo": "^0.24.0",
     "uglifyify": "^5.0.1"
   },
   "devDependencies": {
