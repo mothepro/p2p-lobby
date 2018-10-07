@@ -123,32 +123,36 @@ declare module 'ipfs' {
         error: Error
     }
 
+    interface Message {
+        data: Buffer
+        from: Buffer
+        seqno: Buffer
+        topicIDs: string[]
+    }
+
     interface IPFSPubSub {
         subscribe: (
             topic: string,
-            handler: (msg: any) => void,
-            options?: {discover: boolean},
-            cb?: UglyCallback<never>
-        ) => void | Promise<void>
+            handler: (msg: Message) => void,
+            options?: {discover: boolean}
+        ) => Promise<void>
         unsubscribe: (
             topic: string,
-            handler: (msg: any) => void,
-            cb?: UglyCallback<never>
-        ) => void | Promise<void>
+            handler: (msg: Message) => void
+        ) => Promise<void>
         publish: (
             topic: string,
-            data: Buffer,
-            cb?: UglyCallback<never>
+            data: Buffer
         ) => void | Promise<void>
-        ls: (cb?: UglyCallback<string[]>) => void | Promise<string[]>
-        peers: (cb?: UglyCallback<string[]>) => void | Promise<string[]>
+        ls: () => Promise<string[]>
+        peers: (topic: string) => Promise<string[]>
     }
 
     class Ipfs
         extends (EventEmitter as any as Constructor<StrictEventEmitter<EventEmitter, IPFSEvents>>) {
         constructor(opts: IPFSConstructorParams)
-        start(cb?: UglyCallback<never>): void
-        stop(cb?: UglyCallback<never>): void
+        start(): Promise<void>
+        stop(): Promise<void>
         pubsub: IPFSPubSub
         id: () => Promise<{
             id: string
