@@ -13,12 +13,20 @@ interface Message {
     topicIDs: string[]
 }
 
+export const enum EventNames {
+    error,
+    peerJoin,
+    peerLeft,
+    peerChange,
+    data,
+}
+
 interface Events {
-    error: Error
-    peerJoin: string
-    peerLeft: string
-    peerChange: (peerId: PeerID, joined: boolean) => void
-    data: (data: any, from: PeerID) => void
+    [EventNames.error]: Error
+    [EventNames.peerJoin]: string
+    [EventNames.peerLeft]: string
+    [EventNames.peerChange]: (peerId: PeerID, joined: boolean) => void
+    [EventNames.data]: (data: any, from: PeerID) => void
 }
 
 const enum ConnectionStatus { OFFLINE, READY, DISCONNECTING, CONNECTING, ONLINE }
@@ -71,7 +79,7 @@ export default class P2P
         })
 
         this.ipfs.on('ready', () => this.status = ConnectionStatus.READY)
-        this.ipfs.on('error', err => this.emit('error', err))
+        this.ipfs.on('error', err => this.emit(EventNames.error, err))
 
         this.pollInterval = ipfsConfig.pollInterval
         this.onLobbyMessage = this.onLobbyMessage.bind(this)
@@ -174,16 +182,16 @@ export default class P2P
 
     private peerJoin(peer: PeerID, name: string) {
         if (!this.peers.has(peer)) {
-            this.emit('peerJoin', peer)
-            this.emit('peerChange', peer, true)
+            this.emit(EventNames.peerJoin, peer)
+            this.emit(EventNames.peerChange, peer, true)
         }
         this.peers.set(peer, name)
     }
 
     private peerLeft(peer: PeerID) {
         if (this.peers.has(peer)) {
-            this.emit('peerLeft', peer)
-            this.emit('peerChange', peer, false)
+            this.emit(EventNames.peerLeft, peer)
+            this.emit(EventNames.peerChange, peer, false)
         }
         this.peers.delete(peer)
     }
