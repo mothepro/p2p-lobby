@@ -84,4 +84,4 @@ register(
     entries => new Set(entries as primitive[])
 )
 
-code = 0x1E // set code past reserved section
+code = 0x1E // after reserved section

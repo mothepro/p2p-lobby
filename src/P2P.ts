@@ -31,7 +31,7 @@ interface Events {
 
 const enum ConnectionStatus { OFFLINE, READY, DISCONNECTING, CONNECTING, ONLINE }
 
-export default class P2P
+export default class P2P<T>
     extends (EventEmitter as any as Constructor<StrictEventEmitter<EventEmitter, Events>>) {
 
     public readonly ipfs: Ipfs
@@ -50,7 +50,7 @@ export default class P2P
     private static counter = 1
 
     constructor(
-        public readonly name: string,
+        public readonly name: T,
         pkg: string,
         ipfsConfig: {
             repo: string
@@ -64,7 +64,7 @@ export default class P2P
     ) {
         super()
 
-        if(this.name == P2P.LOBBY_ID)
+        if(typeof this.name === 'string' && this.name == P2P.LOBBY_ID)
             throw Error(`Your name can not be "${this.name}"`)
 
         this.ipfs = new Ipfs({
@@ -120,7 +120,7 @@ export default class P2P
 
     async joinLobby() {
         return this.joinRoom(P2P.LOBBY_ID, this.onLobbyMessage, true)
-            .then(() => this.pollIntervalHandle = setInterval(() => this.pollPeers(), this.pollInterval))
+            .then(() => this.pollIntervalHandle = window.setInterval(() => this.pollPeers(), this.pollInterval))
             .then(() => this.broadcast({name: this.name}))
     }
 
