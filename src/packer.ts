@@ -14,7 +14,7 @@ interface primitiveSet extends Set<primitive> {}
 interface primitiveMap extends Map<primitive, primitive> {}
 
 /** Implement this then be sure to register it! */
-export interface Packable<T> extends Constructor<T> {
+export interface Packable {
     // static pack(inst: instance): packed   // not supported yet
     // static unpack(pack: packed): instance // not supported yet
 }
@@ -28,7 +28,7 @@ export const unpack = (buffer: buffer) => decode(buffer, {codec}) as any
 /** Register a class to be packed or unpacked to a buffer when attempted to be sent or received. */
 export default function register<T, V>(clazz: Constructor<T>, packer: (inst: T) => V, unpacker: (buff: V) => T): void
 export default function register<T extends Error, V>(clazz: Constructor<T>): void
-export default function register<T extends Packable<T>, V>(clazz: Packable<T>): void
+export default function register<T extends Constructor<Packable>, V>(clazz: Constructor<Packable>): void
 export default function register<T, V>(
     clazz: Constructor<T>,
     packer?: (inst: T) => V,
@@ -38,10 +38,10 @@ export default function register<T, V>(
         throw new Error('A max of 128 types can be registered for packing.')
 
     // Get packers from the static method in the class
-    if(typeof (clazz as any).pack == 'function')
+    if(!packer && typeof (clazz as any).pack == 'function')
         packer = (clazz as any).pack
 
-    if(typeof (clazz as any).unpack == 'function')
+    if(!unpacker && typeof (clazz as any).unpack == 'function')
         unpacker = (clazz as any).unpack
 
     // 'any' casts are needed because Errors are not enumerable by default
@@ -60,6 +60,9 @@ export default function register<T, V>(
             return error
         }
     }
+
+    if(typeof packer != 'function' || typeof unpacker != 'function')
+        throw new Error('Packer and Unpacker functions are needed to register a data type.')
 
     // These 'any' casts are used because the typed definitions for this package are incorrect
     codec.addExtPacker(code, clazz, [packer, (x: any) => encode(x, {codec})] as any)

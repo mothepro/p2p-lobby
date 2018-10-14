@@ -1,7 +1,7 @@
 import 'mocha'
 import 'should'
 import {Buffer} from 'buffer'
-import register, {pack, unpack} from '../src/Packer'
+import register, {pack, Packable, unpack} from '../src/Packer'
 
 describe('Packer', () => {
     it('Complex', () => {
@@ -37,10 +37,19 @@ describe('Packer', () => {
         Buffer.isBuffer(buffer)
 
         const actual = unpack(buffer)
-        actual!.should.eql(data)
+        actual.should.eql(data)
     })
 
     it('Register', () => {
+        // Simple sample with static packing methods
+        class Wrapper implements Packable {
+            constructor(public str: string) {}
+            static pack(w: Wrapper) { return w.str }
+            static unpack(str: string) { return new Wrapper(str) }
+        }
+        register(Wrapper)
+
+        // Register other classes
         class Point {
             constructor(
                 public x: number,
@@ -50,23 +59,38 @@ describe('Packer', () => {
             constructor(
                 public name: string,
                 public points: Point[],
+                public wrapper: Wrapper,
                 public stuff: Map<string, any> = new Map) {}
         }
-
         register(Point,
                 point => [point.x, point.y],
                 buff => new Point(buff[0], buff[1]))
         register(Data,
-                data => [data.name, data.points, data.stuff] as [string, Point[], Map<string, any>],
-                buff => new Data(buff[0], buff[1], buff[2]))
+                data => [
+                    data.name,
+                    data.points,
+                    data.wrapper,
+                    data.stuff,
+                ] as [
+                    string,
+                    Point[],
+                    Wrapper,
+                    Map<string, any>
+                ],
+                buff => new Data(buff[0], buff[1], buff[2], buff[3]))
 
-        const data = new Data('pootis', [
-            new Point(0, 0),
-            new Point(-1, 1),
-        ], new Map([['yes', 'no']]))
+        // extensive data object to send
+        const data = new Data(
+            'pootis',
+            [new Point(0, 0), new Point(-1, 1)],
+            new Wrapper('nothing'),
+            new Map([['yes', 'no']]))
 
+        const buffer = pack(data)
+        Buffer.isBuffer(buffer)
+        buffer.length.should.lessThan(JSON.stringify(data).length)
 
-        const actual: Data = unpack(pack(data))
+        const actual: Data = unpack(buffer)
 
         actual.should.be.instanceOf(Data)
         actual.should.eql(data)
