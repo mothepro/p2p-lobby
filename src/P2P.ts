@@ -2,6 +2,7 @@ import * as Ipfs from 'ipfs'
 import StrictEventEmitter from 'strict-event-emitter-types'
 import {EventEmitter} from 'events'
 import {Buffer} from 'buffer'
+import {pack} from './packer'
 
 type Constructor<Instance> = { new(): Instance }
 type PeerID = string
@@ -99,66 +100,64 @@ export default class P2P<T>
     async connect() {
         if(this.status == ConnectionStatus.READY) {
             this.status = ConnectionStatus.CONNECTING
-            return this.ipfs.start().then(() => {
-                this.status = ConnectionStatus.ONLINE
-                return this.ipfs.id().then(({id}) => this.id = id)
-            })
+            await this.ipfs.start()
+            const {id} = await this.ipfs.id()
+            this.id = id
+            this.status = ConnectionStatus.ONLINE
         }
     }
 
     async disconnect() {
         if(this.status == ConnectionStatus.ONLINE) {
             this.status = ConnectionStatus.DISCONNECTING
-            return this.leaveRoom()
-                .then(() => this.ipfs.stop())
-                .then(() => {
-                    this.status = ConnectionStatus.OFFLINE
-                    clearInterval(this.pollIntervalHandle)
-                })
+            await this.leaveRoom()
+            await this.ipfs.stop()
+            clearInterval(this.pollIntervalHandle)
+            this.removeAllListeners()
+            this.status = ConnectionStatus.OFFLINE
         }
     }
 
     async joinLobby() {
-        return this.joinRoom(P2P.LOBBY_ID, this.onLobbyMessage, true)
-            .then(() => this.pollIntervalHandle = window.setInterval(() => this.pollPeers(), this.pollInterval))
-            .then(() => this.broadcast({name: this.name}))
+        await this.joinRoom(P2P.LOBBY_ID, this.onLobbyMessage, true)
+        this.pollIntervalHandle = window.setInterval(() => this.pollPeers(), this.pollInterval)
+        await this.broadcast({name: this.name})
     }
 
     async joinPeer(peer: PeerID) {
-        const join = this.joinRoom(peer, this.onMessage, true)
-        if(this.isLobby)
-            return this.broadcast({name: this.name, room: peer})
-                .then(() => this.leaveRoom())
-                .then(() => join)
-        return join
+        if(this.isLobby) {
+            await this.broadcast({name: this.name, room: peer})
+            await this.leaveRoom()
+        }
+        await this.joinRoom(peer, this.onMessage, false)
     }
 
     async broadcast(data: any) {
-        return this.ipfs.pubsub.publish(this.roomID, Buffer.from(data))
+        await this.ipfs.pubsub.publish(this.roomID, Buffer.from(data))
     }
 
     async readyUp() {
         if (this.roomPeers.size == 0)
             throw Error('Can not ready up since no one has joined your room')
 
-        if(this.status != ConnectionStatus.ONLINE && this.id)
-            return this.joinRoom(this.id, this.onMessage, false)
-                .then(() => this.broadcast(this.roomPeers))
+        if(this.status == ConnectionStatus.ONLINE && this.id) {
+            await this.joinRoom(this.id, this.onMessage, false)
+            await this.broadcast(this.roomPeers)
+        }
     }
 
     private async joinRoom(name: string, handler: (msg: Message) => void, discover: boolean) {
-        return this.connect()
-            .then(() => this.ipfs.pubsub.subscribe(name, handler, {discover}))
-            .then(() => {
-                this.roomID = name
-                this.peers.clear()
-            })
+        await this.connect()
+        await this.ipfs.pubsub.subscribe(name, handler, {discover})
+        this.roomID = name
+        this.peers.clear()
     }
 
     private async leaveRoom() {
-        if(this.roomID)
-            return this.ipfs.pubsub.unsubscribe(this.roomID, this.isLobby ? this.onLobbyMessage : this.onMessage)
-                .then(() => this.peers.clear())
+        if(this.roomID) {
+            await this.ipfs.pubsub.unsubscribe(this.roomID, this.isLobby ? this.onLobbyMessage : this.onMessage)
+            this.peers.clear()
+        }
     }
 
     private onMessage({from, data}: Message) {
@@ -197,13 +196,12 @@ export default class P2P<T>
     }
 
     private async pollPeers() {
-        return this.ipfs.pubsub.peers(this.roomID)
-            .then(peerList => {
-                for (const peer of peerList.filter(peer => !this.peers.has(peer)))
-                    this.peerJoin(peer, `Player #${P2P.counter++}`)
+        const peerList = await this.ipfs.pubsub.peers(this.roomID)
 
-                for (const peer of [...this.peers.keys()].filter(peer => peerList.indexOf(peer) == -1))
-                    this.peerLeft(peer)
-            })
+        for (const peer of peerList.filter(peer => !this.peers.has(peer)))
+            this.peerJoin(peer, `Player #${P2P.counter++}`)
+
+        for (const peer of [...this.peers.keys()].filter(peer => peerList.indexOf(peer) == -1))
+            this.peerLeft(peer)
     }
 }
