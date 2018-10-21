@@ -3,9 +3,11 @@
   "version": "0.0.1",
   "description": "A type safe lobby system built on IPFS",
   "scripts": {
+    "build": "npm run compile && npm run bundle && npm run optimize",
     "bundle": "browserify --external ipfs,ipfs-repo dist/index.js -o dist/bundle.js",
+    "compile": "tsc",
     "optimize": "browserify -g uglifyify dist/bundle.js > dist/bundle.min.js",
-    "build": "npm run bundle && npm run optimize"
+    "test": "npm run compile && mocha dist/test"
   },
   "files": [
     "dist/bundle.js",
