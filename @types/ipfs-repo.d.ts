@@ -1,6 +1,5 @@
 declare module 'ipfs-repo' {
     import {Buffer} from 'buffer'
-    type Constructor<Instance> = { new(): Instance }
     type UglyCallback<T> = (err: Error, ret: T) => void
     type datastoreFs = any // Built in Datastore object
 

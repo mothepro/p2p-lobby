@@ -7,10 +7,10 @@
     "outDir": "dist/",
     "declaration": true,
     "downlevelIteration": true,
-    "lib": ["esnext", "dom"],
-    "types": ["ipfs", "ipfs-repo"]
+    "lib": ["esnext", "dom"]
   },
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "dist"
   ]
 }
