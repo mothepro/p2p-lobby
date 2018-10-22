@@ -166,6 +166,8 @@ declare module 'ipfs' {
             seqno: Buffer
             topicIDs: string[]
         }
+
+        export type PeerID = string
     }
 
     export = Ipfs

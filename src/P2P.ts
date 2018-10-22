@@ -4,10 +4,9 @@ import {EventEmitter} from 'events'
 import {Buffer} from 'buffer'
 import {Packable, pack, unpack} from './packer'
 import {RoomChange, NameChange} from './messages'
-import {Message} from 'ipfs'
+import {Message, PeerID} from 'ipfs'
 
-type Constructor<Instance> = { new(): Instance }
-type PeerID = string
+type Constructor<Instance> = { new(...args: any[]): Instance }
 
 const enum ConnectionStatus { OFFLINE, READY, DISCONNECTING, CONNECTING, ONLINE }
 
