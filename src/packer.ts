@@ -1,7 +1,7 @@
 import {Codec, createCodec, decode, encode} from 'msgpack-lite'
 import {Buffer} from 'buffer'
 
-type Constructor<Instance, params extends Array<any> = any[]> = { new(...args: params): Instance }
+type Constructor<Instance> = { new(...args: any[]): Instance }
 
 type buffer = Buffer | Uint8Array
 
@@ -14,10 +14,12 @@ interface primitiveSet extends Set<primitive> {}
 interface primitiveMap extends Map<primitive, primitive> {}
 
 /** Implement this then be sure to register it! */
-export interface Packable {
+export interface PackableInst {
     // static pack(inst: instance): packed   // not supported yet
     // static unpack(pack: packed): instance // not supported yet
 }
+
+export type Packable = PackableInst | primitive
 
 /** Pack raw data to a buffer. */
 export const pack = (data: any) => encode(data, {codec}) as buffer
@@ -28,7 +30,7 @@ export const unpack = (buffer: buffer) => decode(buffer, {codec}) as any
 /** Register a class to be packed or unpacked to a buffer when attempted to be sent or received. */
 export default function register<T, V>(clazz: Constructor<T>, packer: (inst: T) => V, unpacker: (buff: V) => T): void
 export default function register<T extends Error, V>(clazz: Constructor<T>): void
-export default function register<T extends Constructor<Packable>, V>(clazz: Constructor<Packable>): void
+export default function register<T extends Constructor<PackableInst>, V>(clazz: Constructor<PackableInst>): void
 export default function register<T, V>(
     clazz: Constructor<T>,
     packer?: (inst: T) => V,

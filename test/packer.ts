@@ -1,7 +1,7 @@
 import 'mocha'
 import 'should'
 import {Buffer} from 'buffer'
-import register, {pack, Packable, unpack} from '../src/Packer'
+import register, {pack, PackableInst, unpack} from '../src/Packer'
 
 describe('Packer', () => {
     it('Complex', () => {
@@ -42,7 +42,7 @@ describe('Packer', () => {
 
     it('Register', () => {
         // Simple sample with static packing methods
-        class Wrapper implements Packable {
+        class Wrapper implements PackableInst {
             constructor(public str: string) {}
             static pack(w: Wrapper) { return w.str }
             static unpack(str: string) { return new Wrapper(str) }
