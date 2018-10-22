@@ -123,22 +123,15 @@ declare module 'ipfs' {
         error: Error
     }
 
-    interface Message {
-        data: Buffer
-        from: Buffer
-        seqno: Buffer
-        topicIDs: string[]
-    }
-
     interface IPFSPubSub {
         subscribe: (
             topic: string,
-            handler: (msg: Message) => void,
+            handler: (msg: Ipfs.Message) => void,
             options?: {discover: boolean}
         ) => Promise<void>
         unsubscribe: (
             topic: string,
-            handler: (msg: Message) => void
+            handler: (msg: Ipfs.Message) => void
         ) => Promise<void>
         publish: (
             topic: string,
@@ -166,7 +159,14 @@ declare module 'ipfs' {
     }
 
     // https://github.com/Microsoft/TypeScript/issues/5073
-    namespace Ipfs {}
+    namespace Ipfs {
+        export interface Message {
+            data: Buffer
+            from: Buffer
+            seqno: Buffer
+            topicIDs: string[]
+        }
+    }
 
     export = Ipfs
 }

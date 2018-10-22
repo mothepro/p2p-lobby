@@ -3,7 +3,7 @@ import P2P from '../..'
 let total = 0
 
 /** A P2P Lobby with defaults to communicate to other nodes within the same client. */
-export default function createNode(): P2P {
+export default function createNode(): P2P<string> {
     return new P2P(
         `node-#${++total}`,
         'p2p-lobby',

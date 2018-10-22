@@ -2,17 +2,14 @@ import * as Ipfs from 'ipfs'
 import StrictEventEmitter from 'strict-event-emitter-types'
 import {EventEmitter} from 'events'
 import {Buffer} from 'buffer'
-import {pack} from './packer'
+import {Packable, pack, unpack} from './packer'
+import {RoomChange, NameChange} from './messages'
+import {Message} from 'ipfs'
 
 type Constructor<Instance> = { new(): Instance }
 type PeerID = string
 
-interface Message {
-    data: Buffer
-    from: Buffer
-    seqno: Buffer
-    topicIDs: string[]
-}
+const enum ConnectionStatus { OFFLINE, READY, DISCONNECTING, CONNECTING, ONLINE }
 
 export const enum EventNames {
     error,
@@ -30,10 +27,8 @@ interface Events {
     [EventNames.data]: (data: any, from: PeerID) => void
 }
 
-const enum ConnectionStatus { OFFLINE, READY, DISCONNECTING, CONNECTING, ONLINE }
-
-export default class P2P<T>
-    extends (EventEmitter as any as Constructor<StrictEventEmitter<EventEmitter, Events>>) {
+export default class P2P<T extends Packable>
+    extends (EventEmitter as Constructor<StrictEventEmitter<EventEmitter, Events>>) {
 
     public readonly ipfs: Ipfs
 
@@ -79,14 +74,16 @@ export default class P2P<T>
             },
         })
 
-        this.ipfs.on('ready', () => this.status = ConnectionStatus.READY)
-        this.ipfs.on('error', err => this.emit(EventNames.error, err))
-
         this.pollInterval = ipfsConfig.pollInterval
-        this.onLobbyMessage = this.onLobbyMessage.bind(this)
         this.onMessage = this.onMessage.bind(this)
 
-        window.onclose = () => this.disconnect()
+        this.ipfs.on('ready', () => this.status = ConnectionStatus.READY)
+        this.ipfs.on('error', err => this.emit(EventNames.error, err))
+        addEventListener('beforeunload', async e => {
+            e.preventDefault()
+            e.returnValue = ''; // Chrome requires returnValue to be set.
+            await this.disconnect()
+        })
     }
 
     get isConnected() {
@@ -119,21 +116,21 @@ export default class P2P<T>
     }
 
     async joinLobby() {
-        await this.joinRoom(P2P.LOBBY_ID, this.onLobbyMessage, true)
+        await this.joinRoom(P2P.LOBBY_ID, true)
         this.pollIntervalHandle = window.setInterval(() => this.pollPeers(), this.pollInterval)
-        await this.broadcast({name: this.name})
+        await this.broadcast(new NameChange(this.name))
     }
 
     async joinPeer(peer: PeerID) {
         if(this.isLobby) {
-            await this.broadcast({name: this.name, room: peer})
+            await this.broadcast(new RoomChange(peer, this.name))
             await this.leaveRoom()
         }
-        await this.joinRoom(peer, this.onMessage, false)
+        await this.joinRoom(peer, false)
     }
 
     async broadcast(data: any) {
-        await this.ipfs.pubsub.publish(this.roomID, Buffer.from(data))
+        await this.ipfs.pubsub.publish(this.roomID, pack(data) as Buffer)
     }
 
     async readyUp() {
@@ -141,42 +138,43 @@ export default class P2P<T>
             throw Error('Can not ready up since no one has joined your room')
 
         if(this.status == ConnectionStatus.ONLINE && this.id) {
-            await this.joinRoom(this.id, this.onMessage, false)
+            await this.joinRoom(this.id, false)
             await this.broadcast(this.roomPeers)
         }
     }
 
-    private async joinRoom(name: string, handler: (msg: Message) => void, discover: boolean) {
+    private async joinRoom(name: string, discover: boolean) {
         await this.connect()
-        await this.ipfs.pubsub.subscribe(name, handler, {discover})
+        await this.ipfs.pubsub.subscribe(name, this.onMessage, {discover})
         this.roomID = name
         this.peers.clear()
     }
 
     private async leaveRoom() {
         if(this.roomID) {
-            await this.ipfs.pubsub.unsubscribe(this.roomID, this.isLobby ? this.onLobbyMessage : this.onMessage)
+            await this.ipfs.pubsub.unsubscribe(this.roomID, this.onMessage)
             this.peers.clear()
         }
     }
 
     private onMessage({from, data}: Message) {
-
-    }
-
-    private onLobbyMessage({from, data}: Message) {
         const peer = from.toString()
-        const msg: {
-            name: string
-            room?: string
-        } = JSON.parse(data.toString())
+        const msg = unpack(data)
 
-        if (msg.room) { // joining a room
-            this.peerLeft(peer)
-            if(this.id == msg.room) // joining my room
-                this.roomPeers.set(peer, msg.name)
-        } else if (msg.name) // joining the lobby
-            this.peerJoin(peer, msg.name)
+        switch (msg.constructor) {
+            case RoomChange:
+                this.peerLeft(peer)
+                if(this.id == msg.room) // joining my room
+                    this.roomPeers.set(peer, msg.name)
+                break
+
+            case NameChange:
+                this.peerJoin(peer, msg.name)
+                break
+
+            default:
+                this.emit(EventNames.data, data, peer)
+        }
     }
 
     private peerJoin(peer: PeerID, name: string) {
@@ -195,8 +193,8 @@ export default class P2P<T>
         this.peers.delete(peer)
     }
 
-    private async pollPeers() {
-        const peerList = await this.ipfs.pubsub.peers(this.roomID)
+    private async pollPeers(roomID = this.roomID) {
+        const peerList = await this.ipfs.pubsub.peers(roomID)
 
         for (const peer of peerList.filter(peer => !this.peers.has(peer)))
             this.peerJoin(peer, `Player #${P2P.counter++}`)
