@@ -64,9 +64,6 @@ export default class P2P<T extends Packable>
     ) {
         super()
 
-        if(typeof this.name === 'string' && this.name == P2P.LOBBY_ID)
-            throw Error(`Your name can not be "${this.name}"`)
-
         this.ipfs = new Ipfs({
             EXPERIMENTAL: { pubsub: true },
             start: false,
@@ -81,12 +78,14 @@ export default class P2P<T extends Packable>
         this.pollInterval = ipfsConfig.pollInterval
         this.onMessage = this.onMessage.bind(this)
 
-        this.ipfs.on('ready', () => this.status = ConnectionStatus.READY)
+        this.ipfs.once('ready', () => this.status = ConnectionStatus.READY)
         this.ipfs.on('error', err => this.emit(EventNames.error, err))
         addEventListener('beforeunload', async e => {
             e.preventDefault()
-            e.returnValue = ''; // Chrome requires returnValue to be set.
             await this.disconnect()
+
+            // Chrome requires returnValue to null so no prompt appears.
+            return e.returnValue = undefined
         })
     }
 
@@ -107,6 +106,12 @@ export default class P2P<T extends Packable>
     }
 
     async connect() {
+        if(this.status == ConnectionStatus.OFFLINE)
+            await new Promise((resolve, reject) => {
+                this.ipfs.once('ready', resolve)
+                this.ipfs.once('error', err => reject(err))
+            })
+
         if(this.status == ConnectionStatus.READY) {
             this.status = ConnectionStatus.CONNECTING
             await this.ipfs.start()
