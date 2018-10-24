@@ -3,30 +3,26 @@
   "version": "0.0.1",
   "description": "A type safe lobby system built on IPFS",
   "scripts": {
-    "build": "npm run compile && npm run bundle && npm run optimize",
-    "bundle": "browserify dist/index.js -o dist/bundle.js",
-    "compile": "tsc",
-    "optimize": "browserify -g uglifyify dist/bundle.js -o dist/bundle.min.js",
-    "test": "npm run compile && mocha dist/test"
+    "bundle": "simplifyify index.ts -o dist/bundle.js --debug --bundle",
+    "optimize": "simplifyify index.ts -o dist/bundle.js --minify",
+    "build": "simplifyify index.ts -o dist/bundle.js --minify --debug --bundle",
+    "pretest": "tsc",
+    "test": "mocha dist/test"
   },
-  "files": [
-    "dist/bundle.js",
-    "dist/bundle.min.js"
-  ],
+  "files": ["dist/"],
   "dependencies": {
     "ipfs": "^0.32.3",
     "ipfs-repo": "^0.24.0",
-    "msgpack-lite": "^0.1.26",
-    "uglifyify": "^5.0.1"
+    "msgpack-lite": "^0.1.26"
   },
   "devDependencies": {
     "@types/events": "^1.2.0",
     "@types/mocha": "^5.2.5",
     "@types/msgpack-lite": "^0.1.6",
     "@types/node": "^10.11.4",
-    "browserify": "^16.2.3",
     "mocha": "^5.2.0",
     "should": "^13.2.3",
+    "simplifyify": "^7.0.0",
     "strict-event-emitter-types": "^2.0.0",
     "typescript": "^3.1.1"
   }
