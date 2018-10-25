@@ -3,13 +3,16 @@
   "version": "0.0.1",
   "description": "A type safe lobby system built on IPFS",
   "scripts": {
-    "bundle": "simplifyify index.ts -o dist/bundle.js --debug --bundle",
-    "optimize": "simplifyify index.ts -o dist/bundle.js --minify",
-    "build": "simplifyify index.ts -o dist/bundle.js --minify --debug --bundle",
+    "bundle": "  simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle",
+    "optimize": "simplifyify index.ts -s p2p -o dist/bundle.js --minify",
+    "build": "   simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle --minify",
+    "demo": "    simplifyify demo/index.ts   -o demo/bundle.js --debug --bundle",
     "pretest": "tsc",
     "test": "mocha dist/test"
   },
-  "files": ["dist/"],
+  "files": [
+    "dist/"
+  ],
   "dependencies": {
     "ipfs": "^0.32.3",
     "ipfs-repo": "^0.24.0",
@@ -20,10 +23,18 @@
     "@types/mocha": "^5.2.5",
     "@types/msgpack-lite": "^0.1.6",
     "@types/node": "^10.11.4",
+    "browserify": "^16.2.3",
+    "browserify-shim": "^3.8.14",
     "mocha": "^5.2.0",
     "should": "^13.2.3",
     "simplifyify": "^7.0.0",
     "strict-event-emitter-types": "^2.0.0",
     "typescript": "^3.1.1"
+  },
+  "browserify": {
+    "transform": [ "browserify-shim" ]
+  },
+  "browserify-shim": {
+    "..": "global:p2p"
   }
 }
