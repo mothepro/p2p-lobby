@@ -99,4 +99,5 @@ register(
     entries => new Set(entries as primitive[])
 )
 
-code = 0x1E // after reserved section
+// after reserved section (https://github.com/kawanet/msgpack-lite#extension-types)
+code = 0x1E
