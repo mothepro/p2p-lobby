@@ -5,6 +5,7 @@ import {Buffer} from 'buffer'
 import {Packable, pack, unpack} from './packer'
 import {Introduction, ReadyUpInfo} from './messages'
 import {Message, PeerID} from 'ipfs'
+import {version} from '../package.json'
 
 type Constructor<Instance> = { new(...args: any[]): Instance }
 type RoomID = PeerID // Alias for the names of rooms
@@ -63,7 +64,7 @@ export default class P2P<T extends Packable>
             Swarm: string[]
             pollInterval: number
         } = {
-            repo: `/tmp/p2p-lobby/${pkg}`,
+            repo: `/tmp/p2p-lobby/${version}/${pkg}`,
             Swarm: ['/dns4/ws-star.discovery.libp2p.io/tcp/443/wss/p2p-websocket-star'],
             pollInterval: 1000,
         },
@@ -81,7 +82,7 @@ export default class P2P<T extends Packable>
             },
         })
 
-        this.LOBBY_ID = `__lobby__+${pkg}` // something a peerId could never be
+        this.LOBBY_ID = `${pkg}_${version}_lobby` // something a peerId could never be
         this.pollInterval = ipfsConfig.pollInterval
         this.onMessage = this.onMessage.bind(this)
 
@@ -268,13 +269,7 @@ export default class P2P<T extends Packable>
         if (this.allRooms.has(roomID)) {
             const updatedPeerList = await this.ipfs.pubsub.peers(roomID)
 
-            const newPeers = updatedPeerList.filter(peer => !this.allPeers.has(peer))
-            const oldPeers = [...this.allPeers.keys()].filter(peer => !updatedPeerList.includes(peer))
-
-            for (const peer of newPeers)
-                this.peerJoin(peer, roomID, `Peer #${P2P.counter++}` as T)
-
-            for (const peer of oldPeers)
+            for (const peer of [...this.allPeers.keys()].filter(peer => !updatedPeerList.includes(peer)))
                 this.peerLeft(peer, roomID)
 
             setTimeout(() => this.pollPeers(roomID), this.pollInterval)
