@@ -4,6 +4,7 @@ import {EventEmitter} from 'events'
 import {Buffer} from 'buffer'
 import {Packable, pack, unpack} from './packer'
 import {Introduction, ReadyUpInfo} from './messages'
+import {seedFloat, nextFloat} from './RNG'
 import {Message, PeerID} from 'ipfs'
 import {version} from '../package.json'
 
@@ -206,6 +207,11 @@ export default class P2P<T extends Packable>
         await this.broadcast(new ReadyUpInfo(this.peers))
     }
 
+    /** Generates a random number [0,1) */
+    random() {
+      return nextFloat()
+    }
+
     private async leaveRoom() {
         if(this.isConnected && this.roomID) {
             await this.ipfs.pubsub.unsubscribe(this.roomID, this.onMessage)
@@ -226,6 +232,7 @@ export default class P2P<T extends Packable>
                 break
 
             case ReadyUpInfo:
+                let peerIdTotal = P2P.peerIdSum(this.id)
                 this.allRooms.clear()
                 this.allPeers.clear()
                 this.readyPeers = (msg as ReadyUpInfo<T>).peers
@@ -234,7 +241,9 @@ export default class P2P<T extends Packable>
                 for (const [peerId, data] of (msg as ReadyUpInfo<T>).peers) {
                     this.allPeers.set(peerId, data)
                     this.allRooms.get(this.roomID)!.add(peerId)
+                    peerIdTotal += P2P.peerIdSum(peerId)
                 }
+                seedUnit(peerIdTotal)
                 break
 
             default:
@@ -274,5 +283,14 @@ export default class P2P<T extends Packable>
 
             setTimeout(() => this.pollPeers(roomID), this.pollInterval)
         }
+    }
+
+    private static peerIdSum(id: PeerID): number {
+        // Alphabet of Base58 characters used in peer id's
+        const ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+        let sum = 0
+        for(const char of id)
+            sum += ALPHABET.indexOf(char)
+        return sum
     }
 }
