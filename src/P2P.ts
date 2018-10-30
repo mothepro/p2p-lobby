@@ -4,7 +4,7 @@ import {EventEmitter} from 'events'
 import {Buffer} from 'buffer'
 import {Packable, pack, unpack} from './packer'
 import {Introduction, ReadyUpInfo} from './messages'
-import {seedFloat, nextFloat} from './RNG'
+import {seedInt, nextFloat, nextInt} from './RNG'
 import {Message, PeerID} from 'ipfs'
 import {version} from '../package.json'
 
@@ -22,7 +22,7 @@ export const enum EventNames {
     connected,
     disconnected,
 
-    //
+    // Peer connections
     peerJoin,
     peerLeft,
     peerChange,
@@ -30,8 +30,8 @@ export const enum EventNames {
 
 interface Events {
     [EventNames.error]: Error
-    [EventNames.peerJoin]: string
-    [EventNames.peerLeft]: string
+    [EventNames.peerJoin]: PeerID
+    [EventNames.peerLeft]: PeerID
     [EventNames.peerChange]: (peerId: PeerID, joined: boolean) => void
     [EventNames.data]: (data: any, from: PeerID) => void
     [EventNames.roomReady]: void
@@ -101,8 +101,8 @@ export default class P2P<T extends Packable>
     }
 
     get peers(): Map<PeerID, T> {
-        if (this.isRoomReady)
-            return new Map(this.readyPeers)
+        if (this.isRoomReady) // faster than spread
+            return new Map(this.readyPeers as unknown as [PeerID, T][])
 
         const peers = new Map
         if(this.allRooms.has(this.roomID))
@@ -209,12 +209,20 @@ export default class P2P<T extends Packable>
         await this.broadcast(new ReadyUpInfo(this.peers))
     }
 
-    /** Generates a random number [0,1) */
+    /** Generates a random number in [0,1) */
     random() {
       if(!this.isRoomReady)
           throw Error('Can not generate random numbers until room is ready')
 
       return nextFloat()
+    }
+
+    /** Generates a random positive integer in [0,`max`) */
+    randomUInt(max = 0xFFFFFFFF) {
+      if(!this.isRoomReady)
+          throw Error('Can not generate random numbers until room is ready')
+
+      return Math.abs(nextInt()) % max
     }
 
     private async leaveRoom() {
@@ -248,7 +256,7 @@ export default class P2P<T extends Packable>
                     this.allRooms.get(this.roomID)!.add(peerId)
                     peerIdTotal += P2P.peerIdSum(peerId)
                 }
-                seedUnit(peerIdTotal)
+                seedInt(peerIdTotal)
                 this.emit(EventNames.roomReady)
                 break
 
