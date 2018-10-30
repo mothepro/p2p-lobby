@@ -7,7 +7,7 @@
     "optimize": "simplifyify index.ts -s p2p -o dist/bundle.js --minify",
     "build": "   simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle --minify",
     "demo": "    simplifyify demo/index.ts   -o demo/bundle.js --debug --bundle",
-    "pretest": "tsc",
+    "pretest": "tsc -t esnext",
     "test": "mocha dist/test"
   },
   "files": [
