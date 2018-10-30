@@ -1,7 +1,8 @@
 import 'mocha'
 import 'should'
 import {Buffer} from 'buffer'
-import register, {pack, PackableInst, unpack} from '../src/Packer'
+import {pack, PackableInst, unpack} from '../src/packer'
+import {Packer} from '..'
 
 describe('Packer', () => {
     it('Complex', () => {
@@ -47,7 +48,7 @@ describe('Packer', () => {
             static pack(w: Wrapper) { return w.str }
             static unpack(str: string) { return new Wrapper(str) }
         }
-        register(Wrapper)
+        Packer(Wrapper)
 
         // Register other classes
         class Point {
@@ -62,10 +63,10 @@ describe('Packer', () => {
                 public wrapper: Wrapper,
                 public stuff: Map<string, any> = new Map) {}
         }
-        register(Point,
+        Packer(Point,
                 point => [point.x, point.y],
                 buff => new Point(buff[0], buff[1]))
-        register(Data,
+        Packer(Data,
                 data => [
                     data.name,
                     data.points,
@@ -98,7 +99,7 @@ describe('Packer', () => {
 
     it('Errors', () => {
         class PootError extends Error {}
-        register(PootError)
+        Packer(PootError)
 
         const error = new PootError('pootis') as any
         error.columnNumber = 6
