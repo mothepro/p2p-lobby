@@ -42,7 +42,7 @@ export default class P2P<T extends Packable>
 
     public readonly ipfs: Ipfs
 
-    private readonly allPeers: Map<PeerID, T> = new Map
+    private readonly allPeers: Map<PeerID, T | void> = new Map
     private readonly allRooms: Map<RoomID, Set<PeerID>> = new Map
     private readyPeers?: Map<PeerID, T>
 
@@ -168,8 +168,6 @@ export default class P2P<T extends Packable>
         await this.pollPeers(this.id)
         await this.pollPeers(this.LOBBY_ID)
         this.roomID = this.LOBBY_ID
-
-        await this.broadcast(new Introduction(this.name))
     }
 
     // TODO: Refactor with joinLobby to be more DRY
@@ -226,7 +224,7 @@ export default class P2P<T extends Packable>
     }
 
     private async leaveRoom() {
-        if(this.isConnected && this.roomID) {
+        if(this.roomID && (this.isConnected || this.status == ConnectionStatus.DISCONNECTING)) {
             await this.ipfs.pubsub.unsubscribe(this.roomID, this.onMessage)
             this.allRooms.delete(this.roomID)
             this.readyPeers = undefined
@@ -240,8 +238,13 @@ export default class P2P<T extends Packable>
 
         switch (msg.constructor) {
             case Introduction:
-                for (const room of topicIDs)
-                    this.peerJoin(peer, room, (msg as Introduction<T>).name)
+                if (peer != this.id) {
+                  for (const room of topicIDs) {
+                      this.peerJoin(peer, room, (msg as Introduction<T>).name)
+                      if ((msg as Introduction<T>).infoRequest)
+                        this.broadcast(new Introduction(this.name))
+                  }
+                }
                 break
 
             case ReadyUpInfo:
@@ -254,9 +257,10 @@ export default class P2P<T extends Packable>
                 for (const [peerId, data] of (msg as ReadyUpInfo<T>).peers) {
                     this.allPeers.set(peerId, data)
                     this.allRooms.get(this.roomID)!.add(peerId)
-                    peerIdTotal += P2P.peerIdSum(peerId)
+                    peerIdTotal *= P2P.peerIdSum(peerId)
+                    peerIdTotal %= 0xFFFFFFFF
                 }
-                seedInt(peerIdTotal)
+                seedInt(peerIdTotal - 0x7FFFFFFF)
                 this.emit(EventNames.roomReady)
                 break
 
@@ -266,10 +270,13 @@ export default class P2P<T extends Packable>
         }
     }
 
-    private peerJoin(peer: PeerID, room: RoomID, name: T) {
+    private peerJoin(peer: PeerID, room: RoomID, name?: T) {
         if(peer == this.id) return // don't track self
 
-        if (!this.allRooms.get(room)!.has(peer) && room == this.roomID) {
+        const existWithName = this.allRooms.get(room)!.has(peer)
+            && this.allPeers.get(peer) != undefined
+
+        if (!existWithName && name != undefined && room == this.roomID) {
             this.emit(EventNames.peerJoin, peer)
             this.emit(EventNames.peerChange, peer, true)
         }
@@ -292,19 +299,33 @@ export default class P2P<T extends Packable>
         if (this.allRooms.has(roomID)) {
             const updatedPeerList = await this.ipfs.pubsub.peers(roomID)
 
-            for (const peer of [...this.allPeers.keys()].filter(peer => !updatedPeerList.includes(peer)))
+            const peersJoined = updatedPeerList.filter(peer => !this.allPeers.has(peer))
+            const peersLeft = [...this.allPeers.keys()].filter(peer => !updatedPeerList.includes(peer))
+
+            for (const peer of peersJoined)
+                this.peerJoin(peer, roomID)
+
+            for (const peer of peersLeft)
                 this.peerLeft(peer, roomID)
+
+            // Introduce myself to everyone if I don't know someone and request more info
+            for (const name of this.allPeers.values())
+                if (typeof name == 'undefined') {
+                    await this.broadcast(new Introduction(this.name, true))
+                    break
+                }
 
             setTimeout(() => this.pollPeers(roomID), this.pollInterval)
         }
     }
 
+    /** Quick numerical hash of a peer id. */
     private static peerIdSum(id: PeerID): number {
         // Alphabet of Base58 characters used in peer id's
         const ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
         let sum = 0
-        for(const char of id)
-            sum += ALPHABET.indexOf(char)
+        for(let i = 0; i < id.length; i++)
+            sum += (ALPHABET.indexOf(id[i]) + 1) * (ALPHABET.length * i + 1)
         return sum
     }
 }

@@ -1,6 +1,6 @@
 import {PeerID} from 'ipfs'
-export {EventNames} from '../..'
-import P2P from '../..'
+import P2P, {EventNames} from '../..'
+export {EventNames}
 
 const RUN_TIME = Date.now()
 let total = 0
@@ -16,7 +16,7 @@ global.addEventListener = () => {}
 // Close all peers at end instead
 export async function closeNodes() {
   console.log(`Closing connections for ${peers.size} nodes.`)
-  await Promise.all([...peers].map(peer => peer.disconnect().catch(err => console.log('~~~~F', err)))).catch(err => console.log('~~~~f', err))
+  await Promise.all([...peers].map(peer => peer.disconnect()))
   peers.clear()
 }
 
@@ -41,6 +41,7 @@ class MockP2P extends P2P<string> {
 /** A P2P Lobby with defaults to communicate to other nodes within the same client. */
 export default function createNode(): MockP2P {
     let p2p = new MockP2P
+    p2p.on(EventNames.error, (e: Error) => {throw e})
     peers.add(p2p)
     return p2p
 }
