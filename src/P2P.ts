@@ -34,9 +34,7 @@ interface Events {
     [EventNames.peerLeft]: string
     [EventNames.peerChange]: (peerId: PeerID, joined: boolean) => void
     [EventNames.data]: (data: any, from: PeerID) => void
-
-    // this must be any, see: https://github.com/Microsoft/TypeScript/issues/26154
-    [EventNames.roomReady]: Map<PeerID, any>
+    [EventNames.roomReady]: void
 }
 
 export default class P2P<T extends Packable>
@@ -103,7 +101,7 @@ export default class P2P<T extends Packable>
     }
 
     get peers(): Map<PeerID, T> {
-        if (this.readyPeers) // shortcut
+        if (this.isRoomReady)
             return new Map(this.readyPeers)
 
         const peers = new Map
@@ -115,6 +113,10 @@ export default class P2P<T extends Packable>
 
     get isHost(): boolean {
         return this.roomID == this.id
+    }
+
+    get isRoomReady(): boolean {
+        return !!this.readyPeers
     }
 
     protected get isLobby() {
@@ -209,6 +211,9 @@ export default class P2P<T extends Packable>
 
     /** Generates a random number [0,1) */
     random() {
+      if(!this.isRoomReady)
+          throw Error('Can not generate random numbers until room is ready')
+
       return nextFloat()
     }
 
@@ -244,6 +249,7 @@ export default class P2P<T extends Packable>
                     peerIdTotal += P2P.peerIdSum(peerId)
                 }
                 seedUnit(peerIdTotal)
+                this.emit(EventNames.roomReady)
                 break
 
             default:
