@@ -42,7 +42,7 @@ export default class P2P<T extends Packable>
 
     public readonly ipfs: Ipfs
 
-    private readonly allPeers: Map<PeerID, T | void> = new Map
+    public readonly allPeers: Map<PeerID, T> = new Map
     private readonly allRooms: Map<RoomID, Set<PeerID>> = new Map
     private readyPeers?: Map<PeerID, T>
 
@@ -238,13 +238,19 @@ export default class P2P<T extends Packable>
 
         switch (msg.constructor) {
             case Introduction:
-                if (peer != this.id) {
-                  for (const room of topicIDs) {
-                      this.peerJoin(peer, room, (msg as Introduction<T>).name)
-                      if ((msg as Introduction<T>).infoRequest)
-                        this.broadcast(new Introduction(this.name))
-                  }
+                if (peer == this.id) break // don't track self
+
+                if (topicIDs.includes(this.roomID) && !this.allPeers.has(peer)
+                   && this.allRooms.get(this.roomID)!.has(peer)) {
+                    this.allPeers.set(peer, (msg as Introduction<T>).name)
+                    this.emit(EventNames.peerJoin, peer)
+                    this.emit(EventNames.peerChange, peer, true)
                 }
+
+                // Introduce ourselves if peer we know wants to meet us.
+                // (Otherwise the poller will handle it)
+                if (this.allPeers.has(peer) && (msg as Introduction<T>).infoRequest)
+                    this.broadcast(new Introduction(this.name))
                 break
 
             case ReadyUpInfo:
@@ -270,52 +276,41 @@ export default class P2P<T extends Packable>
         }
     }
 
-    private peerJoin(peer: PeerID, room: RoomID, name?: T) {
-        if(peer == this.id) return // don't track self
-
-        const existWithName = this.allRooms.get(room)!.has(peer)
-            && this.allPeers.get(peer) != undefined
-
-        if (!existWithName && name != undefined && room == this.roomID) {
-            this.emit(EventNames.peerJoin, peer)
-            this.emit(EventNames.peerChange, peer, true)
-        }
-        this.allRooms.get(room)!.add(peer)
-        this.allPeers.set(peer, name)
-    }
-
-    private peerLeft(peer: PeerID, room: RoomID) {
-        if(peer == this.id) return // don't track self
-
-        if (this.allRooms.get(room)!.has(peer) && room == this.roomID) {
-            this.emit(EventNames.peerLeft, peer)
-            this.emit(EventNames.peerChange, peer, false)
-        }
-        this.allPeers.delete(peer)
-        this.allRooms.get(room)!.delete(peer)
-    }
-
-    private async pollPeers(roomID = this.roomID) {
-        if (this.allRooms.has(roomID)) {
-            const updatedPeerList = await this.ipfs.pubsub.peers(roomID)
+    private async pollPeers(room = this.roomID) {
+        if (this.allRooms.has(room)) {
+            let missingPeerName = false
+            const updatedPeerList = await this.ipfs.pubsub.peers(room)
 
             const peersJoined = updatedPeerList.filter(peer => !this.allPeers.has(peer))
             const peersLeft = [...this.allPeers.keys()].filter(peer => !updatedPeerList.includes(peer))
 
-            for (const peer of peersJoined)
-                this.peerJoin(peer, roomID)
+            for (const peer of peersJoined) {
+                if (peer == this.id) continue // don't track self
 
-            for (const peer of peersLeft)
-                this.peerLeft(peer, roomID)
+                // Just add a peer to track in this room
+                this.allRooms.get(room)!.add(peer)
 
-            // Introduce myself to everyone if I don't know someone and request more info
-            for (const name of this.allPeers.values())
-                if (typeof name == 'undefined') {
-                    await this.broadcast(new Introduction(this.name, true))
-                    break
+                if (!this.allPeers.has(peer))
+                    missingPeerName = true
+            }
+
+            for (const peer of peersLeft) {
+                if (peer == this.id) continue // don't track self
+
+                if (this.allRooms.get(room)!.has(peer) && room == this.roomID) {
+                    this.emit(EventNames.peerLeft, peer)
+                    this.emit(EventNames.peerChange, peer, false)
                 }
+                // TODO: add events for peers leaving lobby & own room
 
-            setTimeout(() => this.pollPeers(roomID), this.pollInterval)
+                this.allRooms.get(room)!.delete(peer)
+            }
+
+            // Introduce myself to everyone so everyone else will as well.
+            if (missingPeerName && room == this.roomID)
+                await this.broadcast(new Introduction(this.name, true))
+
+            setTimeout(() => this.pollPeers(room), this.pollInterval)
         }
     }
 
