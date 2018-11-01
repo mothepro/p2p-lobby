@@ -180,20 +180,20 @@ export default class P2P<T extends Packable>
     // TODO: Disable broadcasting in lobby
     async broadcast(data: any) {
         if (!this.isConnected || !this.roomID)
-            throw Error('Must be in a room to broadcast')
+            this.error('Must be in a room to broadcast')
 
         await this.ipfs.pubsub.publish(this.roomID, pack(data) as Buffer)
     }
 
     async readyUp() {
         if (!this.isConnected || !this.id)
-            throw Error('Can not ready up until online. Wait for `connect` method to resolve')
+            this.error('Can not ready up until online. Wait for `connect` method to resolve')
 
         if (!this.isLobby)
-            throw Error('Must be in lobby to ready up')
+            this.error('Must be in lobby to ready up')
 
         if (this.allRooms.has(this.id) && this.allRooms.get(this.id)!.size == 0)
-            throw Error('Can not ready up since no one has joined your room')
+            this.error('Can not ready up since no one has joined your room')
 
         await this.leaveRoom()
         this.roomID = this.id
@@ -203,7 +203,7 @@ export default class P2P<T extends Packable>
     /** Generates a random number in [0,1) */
     random() {
       if(!this.isRoomReady)
-          throw Error('Can not generate random numbers until room is ready')
+          this.error('Can not generate random numbers until room is ready')
 
       return nextFloat()
     }
@@ -211,9 +211,17 @@ export default class P2P<T extends Packable>
     /** Generates a random positive integer in [0,`max`) */
     randomUInt(max = 0xFFFFFFFF) {
       if(!this.isRoomReady)
-          throw Error('Can not generate random numbers until room is ready')
+          this.error('Can not generate random numbers until room is ready')
 
       return Math.abs(nextInt()) % max
+    }
+
+    /** Helper to ensure errors are thrown properly. */
+    private error(error: string | Error) {
+        if (typeof error == 'string')
+            error = Error(error)
+        this.emit(EventNames.error, error)
+        throw error
     }
 
     private async leaveRoom() {
@@ -254,10 +262,8 @@ export default class P2P<T extends Packable>
                     readyPeers.add(peer)       // add peer we joined
                 }
 
-                if (readyPeers.size != myPeers.length || !([...myPeers].every(myPeer => readyPeers.has(myPeer)))) {
-                    console.log('host', (msg as ReadyUpInfo).peers, `me (${this.id})`, myPeers)
-                    throw Error('Our list or peers is inconsistent with the peer we joined')
-                }
+                if (readyPeers.size != myPeers.length || !([...myPeers].every(myPeer => readyPeers.has(myPeer))))
+                    this.error('Our list or peers is inconsistent with the peer we joined')
 
                 seedInt(this.hashPeerMap())
                 this.emit(EventNames.roomReady)

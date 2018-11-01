@@ -1,6 +1,7 @@
 import 'mocha'
 import 'should'
 import createNode, {closeNodes, EventNames} from './util/LocalP2P'
+import {PeerID} from 'ipfs'
 type MockP2P = ReturnType<typeof createNode>
 
 describe('Basic P2P Nodes', function () {
@@ -109,12 +110,12 @@ describe('Basic P2P Nodes', function () {
         })
     })
 
-    describe.only('Rooms', function () {
+    describe('Rooms', function () {
         this.timeout(20 * 1000)
         let node1: MockP2P,
             node2: MockP2P,
             node3: MockP2P,
-            allReady: Promise<[void, void, void]>
+            allReady: Promise<void[]>
 
         beforeEach(async () => {
             node1 = createNode()
@@ -128,7 +129,7 @@ describe('Basic P2P Nodes', function () {
             ])
 
             // node2 sees that node1 joined and will try to connect
-            const id = await new Promise(resolve => node2.once(EventNames.peerJoin, id => resolve(id))) as string
+            const id = await new Promise<PeerID>(resolve => node2.once(EventNames.peerJoin, id => resolve(id)))
 
             await Promise.all([
                 node2.joinPeer(id),
