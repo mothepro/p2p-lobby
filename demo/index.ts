@@ -20,7 +20,7 @@ lobbyBtn.addEventListener('click', async e => {
     log('Joining Lobby')
     await node.joinLobby()
 
-    log(`In lobby [${node.name}]`)
+    log(node.name, 'is in the lobby')
 })
 
 log('All entries are logged here')

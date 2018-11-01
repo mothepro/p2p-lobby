@@ -3,12 +3,11 @@
   "version": "0.0.2",
   "description": "A type safe lobby system built on IPFS",
   "scripts": {
-    "bundle": "  simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle",
-    "optimize": "simplifyify index.ts -s p2p -o dist/bundle.js --minify",
-    "build": "   simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle --minify",
-    "demo": "    simplifyify demo/index.ts   -o demo/bundle.js --debug --bundle",
-    "pretest": "tsc -t esnext",
-    "test": "mocha dist/test"
+    "bundle":       "simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle",
+    "optimize":     "simplifyify index.ts -s p2p -o dist/bundle.js --minify",
+    "build":        "simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle --minify",
+    "demo":         "simplifyify demo/index.ts   -o demo/bundle.js --debug --bundle",
+    "test":         "ts-mocha test/**/*.ts"
   },
   "files": [
     "dist/"
@@ -29,6 +28,7 @@
     "should": "^13.2.3",
     "simplifyify": "^7.0.0",
     "strict-event-emitter-types": "^2.0.0",
+    "ts-mocha": "^2.0.0",
     "typescript": "^3.1.1"
   },
   "browserify": {

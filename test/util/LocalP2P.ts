@@ -29,7 +29,7 @@ class MockP2P extends P2P<string> {
           {
               repo: `test-data/${RUN_TIME}/${total}`,
               Swarm: ['/ip4/127.0.0.1/tcp/0'],
-              pollInterval: 1000 + (100 * total)
+              pollInterval: 50
           }
       )
   }
