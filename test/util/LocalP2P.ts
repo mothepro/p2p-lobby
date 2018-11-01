@@ -35,11 +35,15 @@ class MockP2P extends P2P<string> {
   }
 
   public getID(): PeerID {
-      return this.id
+      return this['id']
+  }
+
+  public getHashPeerMap(): number {
+      return this['hashPeerMap']()
   }
 
   public toString() {
-      return `Node "${this.name}" (${this.id})`
+      return `Node "${this.name}" (${this.getID()})`
   }
 }
 

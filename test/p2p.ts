@@ -1,8 +1,9 @@
 import 'mocha'
 import 'should'
 import createNode, {closeNodes, EventNames} from './util/LocalP2P'
+type MockP2P = ReturnType<typeof createNode>
 
-describe('Basic P2P Nodes', function() {
+describe('Basic P2P Nodes', function () {
     this.timeout(10 * 1000)
 
     afterEach(async () => await closeNodes()) // Always close leftover nodes
@@ -15,8 +16,8 @@ describe('Basic P2P Nodes', function() {
         node.isConnected.should.be.false()
     })
 
-    describe('Lobbies', function() {
-        this.timeout(20 * 1000)
+    describe('Lobbies', function () {
+        this.timeout(30 * 1000)
         this.retries(2)
 
         it('2 Nodes Join', async () => {
@@ -62,6 +63,11 @@ describe('Basic P2P Nodes', function() {
 
                     if (events == 3) {
                         otherIDs.should.be.empty()
+                        node1.peers.should.eql(new Map([
+                            [node2.getID(), node2.name],
+                            [node3.getID(), node3.name],
+                            [node4.getID(), node4.name],
+                        ]))
                         resolve()
                     }
 
@@ -101,5 +107,63 @@ describe('Basic P2P Nodes', function() {
             left1.should.eql(node3.getID())
             left2.should.eql(node3.getID())
         })
+    })
+
+    describe.only('Rooms', function () {
+        this.timeout(20 * 1000)
+        let node1: MockP2P,
+            node2: MockP2P,
+            node3: MockP2P,
+            allReady: Promise<[void, void, void]>
+
+        beforeEach(async () => {
+            node1 = createNode()
+            node2 = createNode()
+            node3 = createNode()
+
+            await Promise.all([
+                node1.joinLobby(),
+                node2.joinLobby(),
+                node3.joinLobby(),
+            ])
+
+            // node2 sees that node1 joined and will try to connect
+            const id = await new Promise(resolve => node2.once(EventNames.peerJoin, id => resolve(id))) as string
+
+            await Promise.all([
+                node2.joinPeer(id),
+                node3.joinPeer(node1.getID()),
+
+                // Wait for other peers to join node1
+                // Since no event is emitted when someone joins me while in lobby
+                new Promise(resolve => node2.once(EventNames.peerJoin, id => resolve(id))),
+                new Promise(resolve => node3.once(EventNames.peerJoin, id => resolve(id))),
+            ])
+
+            allReady = Promise.all([
+                new Promise<void>(resolve => node1.once(EventNames.roomReady, resolve)),
+                new Promise<void>(resolve => node2.once(EventNames.roomReady, resolve)),
+                new Promise<void>(resolve => node3.once(EventNames.roomReady, resolve)),
+            ])
+        })
+
+        it('Ready up', async () => {
+            await node1.readyUp()
+            await allReady
+        })
+
+        it('Generate same random number', async () => {
+            await node1.readyUp()
+            await allReady
+
+            // We can not directly call random since the generated seed global
+            // meaning calls to next will mutate the calls by the other functions.
+            node1.getHashPeerMap().should.eql(node2.getHashPeerMap())
+            node2.getHashPeerMap().should.eql(node3.getHashPeerMap())
+        })
+
+        it('Send messages')
+
+        it('Direct Joins')
     })
 })

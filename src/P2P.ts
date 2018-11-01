@@ -42,11 +42,11 @@ export default class P2P<T extends Packable>
     private readonly allRooms: Map<RoomID, Set<PeerID>> = new Map
     private readyPeers?: Map<PeerID, T>
 
-    protected status: ConnectionStatus = ConnectionStatus.OFFLINE
-    protected roomID: string = ''
-    protected id: PeerID = ''
+    private status: ConnectionStatus = ConnectionStatus.OFFLINE
+    private roomID: string = ''
+    private id: PeerID = ''
 
-    protected readonly pollInterval: number
+    private readonly pollInterval: number
     private readonly LOBBY_ID: RoomID
 
     constructor(
@@ -136,11 +136,10 @@ export default class P2P<T extends Packable>
     async disconnect() {
         if(this.isConnected) {
             this.status = ConnectionStatus.DISCONNECTING
-            if(this.isLobby) { // Be sure to leave own room too
+            for (const room of [...this.allRooms.keys()]) {
+                this.roomID = room
                 await this.leaveRoom()
-                this.roomID = this.id
             }
-            await this.leaveRoom()
             await this.ipfs.stop()
             this.removeAllListeners()
             this.status = ConnectionStatus.OFFLINE
@@ -160,22 +159,22 @@ export default class P2P<T extends Packable>
             .set(this.LOBBY_ID, new Set)
 
         await this.pollPeers(this.id)
-        await this.pollPeers(this.LOBBY_ID)
         this.roomID = this.LOBBY_ID
+        await this.pollPeers()
     }
 
     // TODO: Refactor with joinLobby to be more DRY
     async joinPeer(peer: PeerID) {
-        await this.leaveRoom()
-        await this.connect()
+        if (peer) {
+            await this.leaveRoom()
+            await this.connect()
 
-        await this.ipfs.pubsub.subscribe(peer, this.onMessage, {discover: true})
-        if (!this.allRooms.has(peer))
-            this.allRooms.set(peer, new Set)
-        await this.pollPeers(peer)
-        this.roomID = peer
-
-        await this.broadcast(new Introduction(this.name))
+            await this.ipfs.pubsub.subscribe(peer, this.onMessage, {discover: true})
+            if (!this.allRooms.has(peer))
+                this.allRooms.set(peer, new Set)
+            this.roomID = peer
+            await this.pollPeers()
+        }
     }
 
     // TODO: Disable broadcasting in lobby
@@ -198,7 +197,7 @@ export default class P2P<T extends Packable>
 
         await this.leaveRoom()
         this.roomID = this.id
-        await this.broadcast(new ReadyUpInfo(this.peers))
+        await this.broadcast(new ReadyUpInfo(this.allRooms.get(this.roomID)!))
     }
 
     /** Generates a random number in [0,1) */
@@ -221,7 +220,7 @@ export default class P2P<T extends Packable>
         if(this.roomID && (this.isConnected || this.status == ConnectionStatus.DISCONNECTING)) {
             await this.ipfs.pubsub.unsubscribe(this.roomID, this.onMessage)
             this.allRooms.delete(this.roomID)
-            this.readyPeers = undefined
+            delete this.readyPeers
             this.roomID = ''
         }
     }
@@ -248,20 +247,23 @@ export default class P2P<T extends Packable>
                 break
 
             case ReadyUpInfo:
-                this.allRooms.clear()
-                this.allPeers.clear()
-                this.readyPeers = (msg as ReadyUpInfo<T>).peers
-
-                this.allRooms.set(this.roomID, new Set)
-                for (const [peerId, data] of (msg as ReadyUpInfo<T>).peers) {
-                    this.allPeers.set(peerId, data)
-                    this.allRooms.get(this.roomID)!.add(peerId)
+                const myPeers = [...this.allRooms.get(this.roomID)]
+                const readyPeers = (msg as ReadyUpInfo).peers
+                if (!this.isHost) {
+                    readyPeers.delete(this.id) // remove self
+                    readyPeers.add(peer)       // add peer we joined
                 }
+
+                if (readyPeers.size != myPeers.length || !([...myPeers].every(myPeer => readyPeers.has(myPeer)))) {
+                    console.log('host', (msg as ReadyUpInfo).peers, `me (${this.id})`, myPeers)
+                    throw Error('Our list or peers is inconsistent with the peer we joined')
+                }
+
                 seedInt(this.hashPeerMap())
                 this.emit(EventNames.roomReady)
                 break
 
-            default:
+            default: // TODO: Refactor so this should is only done outside of the lobby
                 if (topicIDs.includes(this.roomID))
                     this.emit(EventNames.data, data, peer)
         }
@@ -272,8 +274,8 @@ export default class P2P<T extends Packable>
             let missingPeerName = false
             const updatedPeerList = await this.ipfs.pubsub.peers(room)
 
-            const peersJoined = updatedPeerList.filter(peer => !this.allPeers.has(peer))
-            const peersLeft = [...this.allPeers.keys()].filter(peer => !updatedPeerList.includes(peer))
+            const peersJoined = updatedPeerList.filter(peer => !this.allRooms.get(room)!.has(peer))
+            const peersLeft = [...this.allRooms.get(room)!].filter(peer => !updatedPeerList.includes(peer))
 
             for (const peer of peersJoined) {
                 if (peer == this.id) continue // don't track self
@@ -281,8 +283,15 @@ export default class P2P<T extends Packable>
                 // Just add a peer to track in this room
                 this.allRooms.get(room)!.add(peer)
 
+                // An unknown peer joined a room
                 if (!this.allPeers.has(peer))
                     missingPeerName = true
+
+                // A peer we know joined this room
+                else if (!this.allRooms.get(room)!.has(peer) && room == this.roomID) {
+                    this.emit(EventNames.peerJoin, peer)
+                    this.emit(EventNames.peerChange, peer, true)
+                }
             }
 
             for (const peer of peersLeft) {
@@ -315,7 +324,7 @@ export default class P2P<T extends Packable>
 
         let allIdHash = 1
         let idHash
-        for (const id of [...this.peers.keys(), this.id]) {
+        for (const id of [...this.peers.keys(), this.id].sort()) {
             idHash = 0
             for(let i = 0; i < id.length; i++)
                 idHash += (ALPHABET.indexOf(id[i]) + 1) * (ALPHABET.length * i + 1)
