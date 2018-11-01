@@ -4,7 +4,7 @@ import {EventEmitter} from 'events'
 import {Buffer} from 'buffer'
 import {Packable, pack, unpack} from './packer'
 import {Introduction, ReadyUpInfo} from './messages'
-import {seedInt, nextFloat, nextInt} from './RNG'
+import {seedInt, nextFloat, nextInt} from './rng'
 import {Message, PeerID} from 'ipfs'
 import {version} from '../package.json'
 
@@ -17,10 +17,6 @@ export const enum EventNames {
     error,
     data,
     roomReady,
-
-    // Peers interacting with lobby
-    connected,
-    disconnected,
 
     // Peer connections
     peerJoin,
@@ -42,7 +38,7 @@ export default class P2P<T extends Packable>
 
     public readonly ipfs: Ipfs
 
-    public readonly allPeers: Map<PeerID, T> = new Map
+    private readonly allPeers: Map<PeerID, T> = new Map
     private readonly allRooms: Map<RoomID, Set<PeerID>> = new Map
     private readyPeers?: Map<PeerID, T>
 
@@ -52,8 +48,6 @@ export default class P2P<T extends Packable>
 
     protected readonly pollInterval: number
     private readonly LOBBY_ID: RoomID
-
-    private static counter = 1
 
     constructor(
         public readonly name: T,
@@ -254,7 +248,6 @@ export default class P2P<T extends Packable>
                 break
 
             case ReadyUpInfo:
-                let peerIdTotal = P2P.peerIdSum(this.id)
                 this.allRooms.clear()
                 this.allPeers.clear()
                 this.readyPeers = (msg as ReadyUpInfo<T>).peers
@@ -263,10 +256,8 @@ export default class P2P<T extends Packable>
                 for (const [peerId, data] of (msg as ReadyUpInfo<T>).peers) {
                     this.allPeers.set(peerId, data)
                     this.allRooms.get(this.roomID)!.add(peerId)
-                    peerIdTotal *= P2P.peerIdSum(peerId)
-                    peerIdTotal %= 0xFFFFFFFF
                 }
-                seedInt(peerIdTotal - 0x7FFFFFFF)
+                seedInt(this.hashPeerMap())
                 this.emit(EventNames.roomReady)
                 break
 
@@ -314,13 +305,23 @@ export default class P2P<T extends Packable>
         }
     }
 
-    /** Quick numerical hash of a peer id. */
-    private static peerIdSum(id: PeerID): number {
+    /**
+     * Generates a number based on the peers connected to the current room.
+     * Meaning this value should be consistent with all other peers as well.
+     */
+    private hashPeerMap() {
         // Alphabet of Base58 characters used in peer id's
-        const ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
-        let sum = 0
-        for(let i = 0; i < id.length; i++)
-            sum += (ALPHABET.indexOf(id[i]) + 1) * (ALPHABET.length * i + 1)
-        return sum
+        const ALPHABET = '0123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+
+        let allIdHash = 1
+        let idHash
+        for (const id of [...this.peers.keys(), this.id]) {
+            idHash = 0
+            for(let i = 0; i < id.length; i++)
+                idHash += (ALPHABET.indexOf(id[i]) + 1) * (ALPHABET.length * i + 1)
+            allIdHash *= idHash
+            allIdHash %= 0xFFFFFFFF
+        }
+        return allIdHash - 0x7FFFFFFF
     }
 }

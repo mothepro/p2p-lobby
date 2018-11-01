@@ -36,6 +36,40 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var _this = this;
+Object.defineProperty(exports, "__esModule", { value: true });
+var __1 = (typeof window !== "undefined" ? window['p2p'] : typeof global !== "undefined" ? global['p2p'] : null);
+var package_json_1 = require("../package.json");
+var util_1 = require("./util");
+var lobbyBtn = document.getElementById('joinLobby');
+lobbyBtn.addEventListener('click', function (e) { return __awaiter(_this, void 0, void 0, function () {
+    var input, node;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                input = document.getElementById('name');
+                if (input.value.trim().length >= 2)
+                    return [2 /*return*/];
+                lobbyBtn.disabled = true;
+                util_1.log('Creating Node');
+                node = new __1.default(input.value.trim(), "my-demo-" + package_json_1.name + "@" + package_json_1.version);
+                node.on(0 /* error */, util_1.log);
+                node.on(3 /* peerJoin */, function (peerID) { return util_1.log("Welcome " + node.peers.get(peerID)); });
+                node.on(4 /* peerLeft */, function (peerID) { return util_1.log("See ya " + node.peers.get(peerID)); });
+                util_1.log('Joining Lobby');
+                return [4 /*yield*/, node.joinLobby()];
+            case 1:
+                _a.sent();
+                util_1.log("In lobby [" + node.name + "]");
+                return [2 /*return*/];
+        }
+    });
+}); });
+util_1.log('All entries are logged here');
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+
+},{"../package.json":3,"./util":2}],2:[function(require,module,exports){
+"use strict";
 var __values = (this && this.__values) || function (o) {
     var m = typeof Symbol === "function" && o[Symbol.iterator], i = 0;
     if (m) return m.call(o);
@@ -46,11 +80,7 @@ var __values = (this && this.__values) || function (o) {
         }
     };
 };
-var _this = this;
 Object.defineProperty(exports, "__esModule", { value: true });
-var __1 = (typeof window !== "undefined" ? window['p2p'] : typeof global !== "undefined" ? global['p2p'] : null);
-var package_json_1 = require("../package.json");
-var lobbyBtn = document.getElementById('joinLobby');
 var messagesList = document.getElementById('messages');
 var lastLogTime = Date.now();
 function log() {
@@ -84,43 +114,18 @@ function log() {
     lastLogTime = Date.now();
     messagesList.appendChild(li);
 }
-lobbyBtn.addEventListener('click', function (e) { return __awaiter(_this, void 0, void 0, function () {
-    var input, node;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0:
-                input = document.getElementById('name');
-                if (!input.value.trim())
-                    return [2 /*return*/];
-                lobbyBtn.disabled = true;
-                log('Creating Node');
-                node = new __1.default(input.value.trim(), "my-demo-" + package_json_1.name + "@" + package_json_1.version);
-                node.on(0 /* error */, log);
-                node.on(5 /* peerJoin */, function (peerID) { return log("Welcome " + node.peers.get(peerID)); });
-                node.on(6 /* peerLeft */, function (peerID) { return log("See ya " + node.peers.get(peerID)); });
-                log('Node created', 'Joining Lobby');
-                return [4 /*yield*/, node.joinLobby()];
-            case 1:
-                _a.sent();
-                log("In lobby [" + node.name + "]");
-                return [2 /*return*/];
-        }
-    });
-}); });
-log('All entries are logged here');
-}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-
-},{"../package.json":2}],2:[function(require,module,exports){
+exports.log = log;
+},{}],3:[function(require,module,exports){
 module.exports={
   "name": "p2p-lobby",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "A type safe lobby system built on IPFS",
   "scripts": {
     "bundle": "  simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle",
     "optimize": "simplifyify index.ts -s p2p -o dist/bundle.js --minify",
     "build": "   simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle --minify",
     "demo": "    simplifyify demo/index.ts   -o demo/bundle.js --debug --bundle",
-    "pretest": "tsc",
+    "pretest": "tsc -t esnext",
     "test": "mocha dist/test"
   },
   "files": [
@@ -145,7 +150,9 @@ module.exports={
     "typescript": "^3.1.1"
   },
   "browserify": {
-    "transform": [ "browserify-shim" ]
+    "transform": [
+      "browserify-shim"
+    ]
   },
   "browserify-shim": {
     "..": "global:p2p"

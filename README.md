@@ -1,4 +1,4 @@
-# P2P Lobby
+# P2P Lobby ([Demo](https://mothepro.github.io/p2p-lobby/demo))
 A type safe lobby system built on IPFS.
 
 ## Install
@@ -12,20 +12,15 @@ Bundle with browserify
 $ npm run build
 ```
 
-or load from CDN
-
-Development Build
+CDN
 ```html
+<!-- Development Build -->
 <script src="https://unpkg.com/p2p-lobby@0.0.1/dist/bundle.js"></script>
-```
 
-Production Build
-```html
+<!-- Production Build -->
 <script src="https://unpkg.com/p2p-lobby@0.0.1/dist/bundle.min.js"></script>
 ```
 
-## Usage
-See demo
 
 ## Roadmap
 + Reduce bundled file size
