@@ -1,13 +1,13 @@
 {
   "name": "p2p-lobby",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "A type safe lobby system built on IPFS",
   "scripts": {
-    "bundle":       "simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle",
-    "optimize":     "simplifyify index.ts -s p2p -o dist/bundle.js --minify",
-    "build":        "simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle --minify",
-    "demo":         "simplifyify demo/index.ts   -o demo/bundle.js --debug --bundle",
-    "test":         "ts-mocha test/**/*.ts"
+    "bundle": "simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle",
+    "optimize": "simplifyify index.ts -s p2p -o dist/bundle.js --minify",
+    "build": "simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle --minify",
+    "demo": "simplifyify demo/index.ts   -o demo/bundle.js --debug --bundle",
+    "test": "ts-mocha test/**/*.ts"
   },
   "files": [
     "dist/"
