@@ -6,13 +6,13 @@ const lobbyBtn = document.getElementById('joinLobby')! as HTMLButtonElement
 
 lobbyBtn.addEventListener('click', async e => {
     const input = document.getElementById('name')! as HTMLInputElement
-    if(input.value.trim().length >= 2)
+    if(input.value.trim().length < 2)
         return
 
     lobbyBtn.disabled = true
 
     log('Creating Node')
-    const node = new P2P(input.value.trim(), `my-demo-${pkgName}@${pkgVersion}`)
+    const node = new P2P(input.value.trim(), `my-demo-${pkgName}@${pkgVersion}`, {allowSameBrowser: true})
     node.on(EventNames.error, log)
     node.on(EventNames.peerJoin, peerID => log(`Welcome ${node.peers.get(peerID)}`))
     node.on(EventNames.peerLeft, peerID => log(`See ya ${node.peers.get(peerID)}`))

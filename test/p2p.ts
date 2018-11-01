@@ -111,7 +111,7 @@ describe('Basic P2P Nodes', function () {
     })
 
     describe('Rooms', function () {
-        this.timeout(20 * 1000)
+        this.timeout(30 * 1000)
         let node1: MockP2P,
             node2: MockP2P,
             node3: MockP2P,

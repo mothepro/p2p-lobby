@@ -48,11 +48,11 @@ lobbyBtn.addEventListener('click', function (e) { return __awaiter(_this, void 0
         switch (_a.label) {
             case 0:
                 input = document.getElementById('name');
-                if (input.value.trim().length >= 2)
+                if (input.value.trim().length < 2)
                     return [2 /*return*/];
                 lobbyBtn.disabled = true;
                 util_1.log('Creating Node');
-                node = new __1.default(input.value.trim(), "my-demo-" + package_json_1.name + "@" + package_json_1.version);
+                node = new __1.default(input.value.trim(), "my-demo-" + package_json_1.name + "@" + package_json_1.version, { appendDateToDefaultRepo: true });
                 node.on(0 /* error */, util_1.log);
                 node.on(3 /* peerJoin */, function (peerID) { return util_1.log("Welcome " + node.peers.get(peerID)); });
                 node.on(4 /* peerLeft */, function (peerID) { return util_1.log("See ya " + node.peers.get(peerID)); });
@@ -60,7 +60,7 @@ lobbyBtn.addEventListener('click', function (e) { return __awaiter(_this, void 0
                 return [4 /*yield*/, node.joinLobby()];
             case 1:
                 _a.sent();
-                util_1.log("In lobby [" + node.name + "]");
+                util_1.log(node.name, 'is in the lobby');
                 return [2 /*return*/];
         }
     });
@@ -121,12 +121,11 @@ module.exports={
   "version": "0.0.2",
   "description": "A type safe lobby system built on IPFS",
   "scripts": {
-    "bundle": "  simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle",
-    "optimize": "simplifyify index.ts -s p2p -o dist/bundle.js --minify",
-    "build": "   simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle --minify",
-    "demo": "    simplifyify demo/index.ts   -o demo/bundle.js --debug --bundle",
-    "pretest": "tsc -t esnext",
-    "test": "mocha dist/test"
+    "bundle":       "simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle",
+    "optimize":     "simplifyify index.ts -s p2p -o dist/bundle.js --minify",
+    "build":        "simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle --minify",
+    "demo":         "simplifyify demo/index.ts   -o demo/bundle.js --debug --bundle",
+    "test":         "ts-mocha test/**/*.ts"
   },
   "files": [
     "dist/"
@@ -147,6 +146,7 @@ module.exports={
     "should": "^13.2.3",
     "simplifyify": "^7.0.0",
     "strict-event-emitter-types": "^2.0.0",
+    "ts-mocha": "^2.0.0",
     "typescript": "^3.1.1"
   },
   "browserify": {

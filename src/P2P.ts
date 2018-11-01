@@ -52,31 +52,29 @@ export default class P2P<T extends Packable>
     constructor(
         public readonly name: T,
         pkg: string,
-        ipfsConfig: {
-            repo: string
-            Swarm: string[]
-            pollInterval: number
-        } = {
-            repo: `/tmp/p2p-lobby/${version}/${pkg}`,
-            Swarm: ['/dns4/ws-star.discovery.libp2p.io/tcp/443/wss/p2p-websocket-star'],
-            pollInterval: 1000,
-        },
+        {
+            allowSameBrowser = false,
+            repo = `/tmp/p2p-lobby/${version}/${pkg}${allowSameBrowser ? Date.now() : ''}`,
+            Swarm = ['/dns4/ws-star.discovery.libp2p.io/tcp/443/wss/p2p-websocket-star'],
+            pollInterval = 1000,
+        }: {
+            repo?: string
+            Swarm?: string[]
+            pollInterval?: number
+            allowSameBrowser?: boolean
+        } = {},
     ) {
         super()
 
         this.ipfs = new Ipfs({
             EXPERIMENTAL: { pubsub: true },
             start: false,
-            repo: ipfsConfig.repo,
-            config: {
-                Addresses: {
-                    Swarm: ipfsConfig.Swarm
-                }
-            },
+            repo,
+            config: { Addresses: { Swarm } },
         })
 
         this.LOBBY_ID = `${pkg}_${version}_lobby` // something a peerId could never be
-        this.pollInterval = ipfsConfig.pollInterval
+        this.pollInterval = pollInterval
         this.onMessage = this.onMessage.bind(this)
 
         this.ipfs.once('ready', () => this.status = ConnectionStatus.READY)
