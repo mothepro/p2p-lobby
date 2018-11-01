@@ -1,31 +1,46 @@
 import 'mocha'
 import 'should'
 import createNode, {closeNodes, EventNames} from './util/LocalP2P'
-import {PeerID} from 'ipfs'
 type MockP2P = ReturnType<typeof createNode>
 
+function multiple(node: MockP2P, event: EventNames, total: number) {
+  let times = 0
+  return new Promise<any[]>(resolve => node.on(event, (...args: any[]) => {
+      if (++times == total)
+          resolve(...args)
+  }))
+}
+
 describe('Basic P2P Nodes', function () {
-    this.timeout(10 * 1000)
+    this.timeout(20 * 1000)
+
+    let node1: MockP2P,
+        node2: MockP2P,
+        node3: MockP2P,
+        node4: MockP2P
+
+    beforeEach(() => {
+        node1 = createNode()
+        node2 = createNode()
+        node3 = createNode()
+        node4 = createNode()
+    })
 
     afterEach(async () => await closeNodes()) // Always close leftover nodes
 
     it('Connect & Disconnect', async () => {
-        let node = createNode()
-        await node.connect()
-        node.isConnected.should.be.true()
-        await node.disconnect()
-        node.isConnected.should.be.false()
+        await node1.connect()
+        node1.isConnected.should.be.true()
+        await node1.disconnect()
+        node1.isConnected.should.be.false()
     })
 
     describe('Lobbies', function () {
-        this.timeout(30 * 1000)
+        this.timeout(60 * 1000)
         this.retries(2)
 
         it('2 Nodes Join', async () => {
-            let node1 = createNode()
             await node1.joinLobby()
-
-            let node2 = createNode()
             await node2.joinLobby()
 
             const [id2, id1] = await Promise.all([
@@ -37,11 +52,6 @@ describe('Basic P2P Nodes', function () {
         })
 
         it('Many Nodes Join', async () => {
-            const node1 = createNode()
-            const node2 = createNode()
-            const node3 = createNode()
-            const node4 = createNode()
-
             await Promise.all([
                 node1.joinLobby(),
                 node2.joinLobby(),
@@ -79,10 +89,6 @@ describe('Basic P2P Nodes', function () {
         })
 
         it('Node Leaving', async () => {
-            const node1 = createNode()
-            const node2 = createNode()
-            const node3 = createNode()
-
             await Promise.all([
                 node1.joinLobby(),
                 node2.joinLobby(),
@@ -111,17 +117,10 @@ describe('Basic P2P Nodes', function () {
     })
 
     describe('Rooms', function () {
-        this.timeout(30 * 1000)
-        let node1: MockP2P,
-            node2: MockP2P,
-            node3: MockP2P,
-            allReady: Promise<void[]>
+        this.timeout(120 * 1000)
+        let allReady: Promise<void[]>
 
         beforeEach(async () => {
-            node1 = createNode()
-            node2 = createNode()
-            node3 = createNode()
-
             await Promise.all([
                 node1.joinLobby(),
                 node2.joinLobby(),
@@ -129,16 +128,18 @@ describe('Basic P2P Nodes', function () {
             ])
 
             // node2 sees that node1 joined and will try to connect
-            const id = await new Promise<PeerID>(resolve => node2.once(EventNames.peerJoin, id => resolve(id)))
+            await multiple(node1, EventNames.peerJoin, 2)
 
             await Promise.all([
-                node2.joinPeer(id),
+                node2.joinPeer(node1.getID()),
                 node3.joinPeer(node1.getID()),
 
                 // Wait for other peers to join node1
                 // Since no event is emitted when someone joins me while in lobby
-                new Promise(resolve => node2.once(EventNames.peerJoin, id => resolve(id))),
-                new Promise(resolve => node3.once(EventNames.peerJoin, id => resolve(id))),
+                new Promise(resolve => node2.once(EventNames.peerJoin, resolve)),
+                // new Promise(resolve => node3.once(EventNames.peerJoin, resolve)),
+                // new Promise(resolve => node3.once(EventNames.peerJoin, resolve)),
+                 multiple(node3, EventNames.peerJoin, 2)
             ])
 
             allReady = Promise.all([
