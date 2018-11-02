@@ -20,13 +20,13 @@ CDN
 <!-- Production Build -->
 <script src="https://unpkg.com/p2p-lobby@0.0.1/dist/bundle.min.js"></script>
 ```
-
+Everything will be exposed under the global variable `p2p`.
 
 ## Roadmap
 + Reduce bundled file size
- + Remove redundant deps
- + Build for multiple targets
- + Use as a libp2p package instead of ipfs wrapper
- + Use Proto instead of msgpack.
- + Upgrade to a smaller [async emitter](https://github.com/sindresorhus/emittery)
- + Use UInt8Array over Buffers
+  + Remove redundant deps
+  + Build for multiple targets
+  + Use as a libp2p package instead of ipfs wrapper
+  + Use Proto instead of msgpack.
+  + Upgrade to a smaller [async emitter](https://github.com/sindresorhus/emittery)
+  + Use UInt8Array over Buffers

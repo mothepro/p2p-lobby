@@ -36,8 +36,9 @@ export function forEventValue(
   times = 1,
 ): Promise<Events[typeof event]> {
     let resolver: Function
-
+console.log(`${node.getID()}.on(${event}, ${value}) x ${times}`)
     function waiter(arg: any) {
+console.log(`${node.getID()}.emit(${event}, ${arg}) ... ${arg === value} & ${times} == 1`)
         if(arg === value && --times == 0)
             resolver(arg)
     }
