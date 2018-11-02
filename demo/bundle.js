@@ -52,7 +52,7 @@ lobbyBtn.addEventListener('click', function (e) { return __awaiter(_this, void 0
                     return [2 /*return*/];
                 lobbyBtn.disabled = true;
                 util_1.log('Creating Node');
-                node = new __1.default(input.value.trim(), "my-demo-" + package_json_1.name + "@" + package_json_1.version, { appendDateToDefaultRepo: true });
+	            node = new __1.default(input.value.trim(), "my-demo-" + package_json_1.name + "@" + package_json_1.version, {allowSameBrowser: true});
                 node.on(0 /* error */, util_1.log);
                 node.on(3 /* peerJoin */, function (peerID) { return util_1.log("Welcome " + node.peers.get(peerID)); });
                 node.on(4 /* peerLeft */, function (peerID) { return util_1.log("See ya " + node.peers.get(peerID)); });
@@ -117,39 +117,45 @@ function log() {
 exports.log = log;
 },{}],3:[function(require,module,exports){
 module.exports={
-  "name": "p2p-lobby",
-  "version": "0.0.2",
-  "description": "A type safe lobby system built on IPFS",
-  "scripts": {
-    "bundle":       "simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle",
-    "optimize":     "simplifyify index.ts -s p2p -o dist/bundle.js --minify",
-    "build":        "simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle --minify",
-    "demo":         "simplifyify demo/index.ts   -o demo/bundle.js --debug --bundle",
-    "test":         "ts-mocha test/**/*.ts"
+  "name":            "p2p-lobby",
+	"version":         "0.0.6",
+  "description":     "A type safe lobby system built on IPFS",
+  "scripts":         {
+	  "bundle":         "simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle",
+	  "optimize":       "simplifyify index.ts -s p2p -o dist/bundle.js --minify",
+	  "build":          "simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle --minify",
+	  "demo":           "simplifyify demo/index.ts   -o demo/bundle.js --debug --bundle",
+	  "test":           "ts-mocha test/*.ts",
+	  "prepare":        "npm test && npm run build && npm run demo && rimraf dist/package.json",
+	  "publish-please": "publish-please",
+	  "prepublishOnly": "publish-please guard"
   },
-  "files": [
+  "files":           [
     "dist/"
   ],
-  "dependencies": {
+  "dependencies":    {
     "ipfs": "^0.32.3",
     "ipfs-repo": "^0.24.0",
     "msgpack-lite": "^0.1.26"
   },
   "devDependencies": {
-    "@types/events": "^1.2.0",
-    "@types/mocha": "^5.2.5",
-    "@types/msgpack-lite": "^0.1.6",
-    "@types/node": "^10.11.4",
-    "browserify": "^16.2.3",
-    "browserify-shim": "^3.8.14",
-    "mocha": "^5.2.0",
-    "should": "^13.2.3",
-    "simplifyify": "^7.0.0",
+    "@types/events":              "^1.2.0",
+    "@types/mocha":               "^5.2.5",
+    "@types/msgpack-lite":        "^0.1.6",
+    "@types/node":                "^10.11.4",
+	  "@types/should":              "^13.0.0",
+    "browserify":                 "^16.2.3",
+    "browserify-shim":            "^3.8.14",
+    "mocha":                      "^5.2.0",
+	  "publish-please":             "^5.1.1",
+	  "rimraf":                     "^2.6.2",
+    "should":                     "^13.2.3",
+    "simplifyify":                "^7.0.0",
     "strict-event-emitter-types": "^2.0.0",
-    "ts-mocha": "^2.0.0",
-    "typescript": "^3.1.1"
+    "ts-mocha":                   "^2.0.0",
+    "typescript":                 "^3.1.1"
   },
-  "browserify": {
+  "browserify":      {
     "transform": [
       "browserify-shim"
     ]
