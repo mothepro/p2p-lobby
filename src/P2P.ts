@@ -33,6 +33,14 @@ interface Events {
     [EventNames.roomReady]: void
 }
 
+export interface P2Popts {
+    allowSameBrowser: boolean
+    repo: string
+    Swarm: string[]
+    pollInterval: number
+    maxIdleTime: number
+}
+
 export default class P2P<T extends Packable>
     extends (EventEmitter as Constructor<StrictEventEmitter<EventEmitter, Events>>) {
 
@@ -60,14 +68,8 @@ export default class P2P<T extends Packable>
             repo = `/tmp/p2p-lobby/${version}/${pkg}${allowSameBrowser ? '/' + Math.random().toString().substr(2) : ''}`,
             Swarm = ['/dns4/ws-star.discovery.libp2p.io/tcp/443/wss/p2p-websocket-star'],
             pollInterval = 1000,
-            maxIdleTime = 60 * 1000,
-        }: {
-            repo?: string
-            Swarm?: string[]
-            pollInterval?: number
-            allowSameBrowser?: boolean
-            maxIdleTime?: number
-        } = {},
+            maxIdleTime = 0,
+        }: Partial<P2Popts> = {},
     ) {
         super()
 
@@ -137,12 +139,15 @@ export default class P2P<T extends Packable>
         }
 
         // disconnect after idling for some time, if still in Lobby
-        if(this.maxIdleTimeHandle)
-            clearTimeout(this.maxIdleTimeHandle)
-        this.maxIdleTimeHandle = setTimeout(
-            () => this.isLobby && this.disconnect,
-            this.maxIdleTime
-        ) as unknown as number
+        if (this.maxIdleTime) {
+            if (this.maxIdleTimeHandle)
+                clearTimeout(this.maxIdleTimeHandle)
+
+            this.maxIdleTimeHandle = setTimeout(
+                () => this.isLobby && this.disconnect(),
+                this.maxIdleTime
+            ) as unknown as number
+        }
     }
 
     async disconnect() {

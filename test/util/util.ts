@@ -1,4 +1,5 @@
 import createNode, {EventNames} from './LocalP2P'
+
 type MockP2P = ReturnType<typeof createNode>
 
 // TODO: replace with events from P2P.ts
@@ -12,7 +13,7 @@ interface Events {
 }
 
 // TODO: DRYer approach
-export function forEvent(node: MockP2P, event: EventNames, times = 1): Promise<Events[typeof event]> {
+export async function forEvent(node: MockP2P, event: EventNames, times = 1): Promise<Events[typeof event]> {
     let resolver: Function
 
     function waiter(arg: any) {
@@ -29,7 +30,7 @@ export function forEvent(node: MockP2P, event: EventNames, times = 1): Promise<E
     })
 }
 
-export function forEventValue(
+export async function forEventValue(
   node: MockP2P,
   event: EventNames,
   value: Events[typeof event],
@@ -50,4 +51,8 @@ console.log(`${node.getID()}.emit(${event}, ${arg}) ... ${arg === value} & ${tim
         node.removeListener(event, waiter)
         return arg
     })
+}
+
+export async function delay(ms: number) {
+    return new Promise(resolve => setTimeout(resolve, ms))
 }

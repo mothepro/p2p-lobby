@@ -1,12 +1,14 @@
 import 'mocha'
 import 'should'
-import createNode, {EventNames} from './util/LocalP2P'
-import {forEvent, forEventValue} from './util/util'
+import createNode, {EventNames, MockP2Popts} from './util/LocalP2P'
+import {delay, forEvent, forEventValue} from './util/util'
+
 type MockP2P = ReturnType<typeof createNode>
 
 describe('Basic P2P Nodes', function () {
     this.retries(3)
 
+    const options: Partial<MockP2Popts> = {}
     let node1: MockP2P,
         node2: MockP2P,
         node3: MockP2P,
@@ -15,10 +17,10 @@ describe('Basic P2P Nodes', function () {
     beforeEach(function () {
         this.timeout(60 * 1000)
 
-        node1 = createNode()
-        node2 = createNode()
-        node3 = createNode()
-        node4 = createNode()
+        node1 = createNode(options)
+        node2 = createNode(options)
+        node3 = createNode(options)
+        node4 = createNode(options)
 
         return Promise.all([
             node1.connect(),
@@ -45,6 +47,25 @@ describe('Basic P2P Nodes', function () {
         node1.isConnected.should.be.true()
         await node1.disconnect()
         node1.isConnected.should.be.false()
+    })
+
+    describe('Idling', function () {
+        const IDLE_TIME = 100
+        options.maxIdleTime = IDLE_TIME
+
+        it('Kick me from lobby', async () => {
+            node1.joinLobby()
+            node1.isConnected.should.be.true()
+            await delay(IDLE_TIME)
+            node1.isConnected.should.be.false()
+        })
+
+        it('Leave me with peer', async () => {
+            node1.joinPeer(node2.getID())
+            node1.isConnected.should.be.true()
+            await delay(IDLE_TIME)
+            node1.isConnected.should.be.true()
+        })
     })
 
     describe('Lobbies', function () {
