@@ -38,20 +38,20 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 };
 var _this = this;
 Object.defineProperty(exports, "__esModule", { value: true });
-var __1            = (typeof window !== "undefined" ? window['p2p'] : typeof global !== "undefined" ? global['p2p'] : null);
+	var __1          = (typeof window !== "undefined" ? window['p2p'] : typeof global !== "undefined" ? global['p2p'] : null);
 var package_json_1 = require("../package.json");
-var util_1         = require("./util");
+	var util_1       = require("./util");
 	var lobbyForm    = document.getElementById('joinLobby');
-	lobbyForm.addEventListener('onsubmit', function (e) {
+	var lobbyBtn     = document.getElementById('joinLobbyBtn');
+	var input        = document.getElementById('name');
+	lobbyForm.addEventListener('submit', function (e) {
 		return __awaiter(_this, void 0, void 0, function () {
-			var lobbyBtn, input, node;
+			var node;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
 	            e.preventDefault();
-	            lobbyBtn            = document.getElementById('joinLobbyBtn');
                 lobbyBtn.disabled = true;
-	            input               = document.getElementById('name');
                 util_1.log('Creating Node');
 	            node = new __1.default(input.value.trim(), "my-demo-" + package_json_1.name + "@" + package_json_1.version, {allowSameBrowser: true});
                 node.on(0 /* error */, util_1.log);
@@ -127,8 +127,8 @@ module.exports={
 		"build:demo":     "simplifyify demo/index.ts -o demo/bundle.js --debug --bundle",
 		"build":          "simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle --minify",
 		"test":           "ts-mocha test/*.ts",
-		"prepare:prev":   "npm run build && npm run build:demo && rimraf dist/package.json",
-		"prepare":        "npm test",
+		"prepare:prev":   "npm run build && npm run build:demo",
+		"prepare":        "npm test && rimraf dist/package.json",
 		"publish-please": "publish-please",
 		"prepublishOnly": "publish-please guard"
   },
