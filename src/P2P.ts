@@ -28,8 +28,8 @@ interface Events {
     [EventNames.error]: Error
     [EventNames.peerJoin]: PeerID
     [EventNames.peerLeft]: PeerID
-    [EventNames.peerChange]: (peerId: PeerID, joined: boolean) => void
-    [EventNames.data]: (data: any, from: PeerID) => void
+    [EventNames.peerChange]: {peer: PeerID, joined: boolean}
+    [EventNames.data]: {peer: PeerID, data: any}
     [EventNames.roomReady]: void
 }
 
@@ -256,7 +256,7 @@ export default class P2P<T extends Packable>
                    && this.allRooms.get(this.roomID)!.has(peer)) {
                     this.allPeers.set(peer, (msg as Introduction<T>).name)
                     this.emit(EventNames.peerJoin, peer)
-                    this.emit(EventNames.peerChange, peer, true)
+                    this.emit(EventNames.peerChange, {peer, joined: true})
                 }
 
                 // Introduce ourselves if peer we know wants to meet us.
@@ -282,7 +282,7 @@ export default class P2P<T extends Packable>
 
             default: // TODO: Refactor so this should is only done outside of the lobby
                 if (topicIDs.includes(this.roomID))
-                    this.emit(EventNames.data, data, peer)
+                    this.emit(EventNames.data, {data, peer})
         }
     }
 
@@ -308,7 +308,7 @@ export default class P2P<T extends Packable>
             else if (!currentPeers.has(peer) && room == this.roomID) {
                 currentPeers.add(peer) // add here so we have it for the event
                 this.emit(EventNames.peerJoin, peer)
-                this.emit(EventNames.peerChange, peer, true)
+                this.emit(EventNames.peerChange, {peer, joined: true})
             }
 
             currentPeers.add(peer)
@@ -320,7 +320,7 @@ export default class P2P<T extends Packable>
             // TODO: add events for peers leaving lobby & own room
             if (currentPeers.has(peer) && room == this.roomID) {
                 this.emit(EventNames.peerLeft, peer)
-                this.emit(EventNames.peerChange, peer, false)
+                this.emit(EventNames.peerChange, {peer, joined: false})
                 currentPeers.delete(peer) // remove so we don't have it for event
                 this.allPeers.delete(peer) // safe to remove here incase they rejoin with new name
             }
