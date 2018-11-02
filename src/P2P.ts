@@ -1,11 +1,11 @@
 import * as Ipfs from 'ipfs'
+import {Message, PeerID} from 'ipfs'
 import StrictEventEmitter from 'strict-event-emitter-types'
 import {EventEmitter} from 'events'
 import {Buffer} from 'buffer'
-import {Packable, pack, unpack} from './packer'
+import {pack, Packable, unpack} from './packer'
 import {Introduction, ReadyUpInfo} from './messages'
-import {seedInt, nextFloat, nextInt} from './rng'
-import {Message, PeerID} from 'ipfs'
+import {nextFloat, nextInt, seedInt} from './rng'
 import {version} from '../package.json'
 
 type Constructor<Instance> = { new(...args: any[]): Instance }
@@ -319,10 +319,10 @@ export default class P2P<T extends Packable>
 
             // TODO: add events for peers leaving lobby & own room
             if (currentPeers.has(peer) && room == this.roomID) {
-                currentPeers.delete(peer) // remove so we don't have it for event
-                this.allPeers.delete(peer) // safe to remove here incase they rejoin with new name
                 this.emit(EventNames.peerLeft, peer)
                 this.emit(EventNames.peerChange, peer, false)
+                currentPeers.delete(peer) // remove so we don't have it for event
+                this.allPeers.delete(peer) // safe to remove here incase they rejoin with new name
             }
 
             currentPeers.delete(peer)
