@@ -7,9 +7,8 @@
     "optimize": "simplifyify index.ts -s p2p -o dist/bundle.js --minify",
     "build": "simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle --minify",
     "demo": "simplifyify demo/index.ts   -o demo/bundle.js --debug --bundle",
-    "test": "ts-mocha test/**/*.ts",
-    "pretest-raw": "tsc -t esnext",
-    "test-raw": "mocha dist/test --exit"
+    "test": "ts-mocha test/*.ts",
+    "prepublish": "npm run test"
   },
   "files": [
     "dist/"

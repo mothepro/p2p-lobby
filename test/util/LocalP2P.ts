@@ -13,13 +13,6 @@ interface Global {
 declare const global: Global
 global.addEventListener = () => {}
 
-/** Close all peers at end instead. */
-export async function closeNodes() {
-  console.log(`Closing connections for ${peers.size} nodes.`)
-  await Promise.all([...peers].map(peer => peer.disconnect()))
-  peers.clear()
-}
-
 /** A more open P2P impl for node. */
 class MockP2P extends P2P<string> {
   constructor(name: string) {

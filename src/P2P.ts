@@ -57,7 +57,7 @@ export default class P2P<T extends Packable>
         pkg: string,
         {
             allowSameBrowser = false,
-            repo = `/tmp/p2p-lobby/${version}/${pkg}${allowSameBrowser ? Date.now() : ''}`,
+            repo = `/tmp/p2p-lobby/${version}/${pkg}${allowSameBrowser ? '/' + Math.random().toString().substr(2) : ''}`,
             Swarm = ['/dns4/ws-star.discovery.libp2p.io/tcp/443/wss/p2p-websocket-star'],
             pollInterval = 1000,
             maxIdleTime = 60 * 1000,
@@ -320,6 +320,7 @@ export default class P2P<T extends Packable>
             // TODO: add events for peers leaving lobby & own room
             if (currentPeers.has(peer) && room == this.roomID) {
                 currentPeers.delete(peer) // remove so we don't have it for event
+                this.allPeers.delete(peer) // safe to remove here incase they rejoin with new name
                 this.emit(EventNames.peerLeft, peer)
                 this.emit(EventNames.peerChange, peer, false)
             }
