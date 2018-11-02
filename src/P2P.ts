@@ -208,7 +208,7 @@ export default class P2P<T extends Packable>
 
         await this.leaveRoom()
         this.roomID = this.id
-        await this.broadcast(new ReadyUpInfo(this.allRooms.get(this.roomID)!))
+        await this.broadcast(new ReadyUpInfo(this.hashPeerMap()))
     }
 
     /** Generates a random number in [0,1) */
@@ -266,17 +266,10 @@ export default class P2P<T extends Packable>
                 break
 
             case ReadyUpInfo:
-                const myPeers = [...this.allRooms.get(this.roomID)!]
-                const readyPeers = (msg as ReadyUpInfo).peers
-                if (!this.isHost) {
-                    readyPeers.delete(this.id) // remove self
-                    readyPeers.add(peer)       // add peer we joined
-                }
-
-                if (readyPeers.size != myPeers.length || !([...myPeers].every(myPeer => readyPeers.has(myPeer))))
+                if (this.hashPeerMap() != (msg as ReadyUpInfo).hash)
                     this.error('Our list or peers is inconsistent with the peer we joined')
 
-                seedInt(this.hashPeerMap())
+                seedInt((msg as ReadyUpInfo).hash)
                 this.emit(EventNames.roomReady)
                 break
 

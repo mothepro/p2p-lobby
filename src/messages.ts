@@ -1,6 +1,4 @@
-import {PackableInst} from './packer'
-import register from './packer'
-import {PeerID} from 'ipfs'
+import register, {PackableInst} from './packer'
 
 /** This is a confirmation that a peer is in the room and contains the initial information. */
 export class Introduction<T> implements PackableInst {
@@ -11,9 +9,9 @@ export class Introduction<T> implements PackableInst {
 
 /** The host is ready. This contains all the information about connected peers to ensure all are in sync */
 export class ReadyUpInfo implements PackableInst {
-    constructor(public peers: Set<PeerID>) {}
-    static pack(isnt: ReadyUpInfo) { return [...isnt.peers] }
-    static unpack(peers: PeerID[]) { return new ReadyUpInfo(new Set(peers)) }
+    constructor(public hash: number) {}
+    static pack(isnt: ReadyUpInfo) { return isnt.hash }
+    static unpack(hash: number) { return new ReadyUpInfo(hash) }
 }
 
 register(Introduction)
