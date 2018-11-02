@@ -3,12 +3,13 @@
   "version": "0.0.7",
   "description": "A type safe lobby system built on IPFS",
   "scripts": {
-    "bundle": "simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle",
-    "optimize": "simplifyify index.ts -s p2p -o dist/bundle.js --minify",
+    "build:dev": "simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle",
+    "build:prod": "simplifyify index.ts -s p2p -o dist/bundle.js --minify",
+    "build:demo": "simplifyify demo/index.ts -o demo/bundle.js --debug --bundle",
     "build": "simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle --minify",
-    "demo": "simplifyify demo/index.ts   -o demo/bundle.js --debug --bundle",
     "test": "ts-mocha test/*.ts",
-    "prepare": "npm test && npm run build && npm run demo && rimraf dist/package.json",
+    "prepare:prev": "npm run build && npm run build:demo && rimraf dist/package.json",
+    "prepare": "npm test",
     "publish-please": "publish-please",
     "prepublishOnly": "publish-please guard"
   },
