@@ -2,14 +2,14 @@ import P2P, {EventNames} from '..'
 import {name as pkgName, version as pkgVersion} from '../package.json'
 import {log} from './util'
 
-const lobbyBtn = document.getElementById('joinLobby')! as HTMLButtonElement
+const lobbyForm = document.getElementById('joinLobby')! as HTMLFormElement
+lobbyForm.addEventListener('onsubmit', async e => {
 
-lobbyBtn.addEventListener('click', async e => {
-    const input = document.getElementById('name')! as HTMLInputElement
-    if(input.value.trim().length < 2)
-        return
-
+    e.preventDefault()
+    const lobbyBtn = document.getElementById('joinLobbyBtn')! as HTMLInputElement
     lobbyBtn.disabled = true
+
+    const input = document.getElementById('name')! as HTMLInputElement
 
     log('Creating Node')
     const node = new P2P(input.value.trim(), `my-demo-${pkgName}@${pkgVersion}`, {allowSameBrowser: true})

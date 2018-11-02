@@ -2,15 +2,28 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>P2P Lobby Demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+          integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
 </head>
 <body>
-    <label>
-        <input type="text" required id="name" placeholder="Name">
-        <button id="joinLobby">Join Lobby</button>
-    </label>
-    <br />
+<div class="container">
+    <form id="joinLobby" onsubmit="return false">
+        <input
+                type="text"
+                id="name"
+                placeholder="Name"
+                required
+                pattern=".{2,}"
+                maxlength="50"
+                title="2 characters minimum"
+        />
+        <input type="submit" id="joinLobbyBtn" value="Join Lobby"/>
+    </form>
+    <br/>
     <ul id="messages"></ul>
+</div>
     <script defer src="https://unpkg.com/p2p-lobby/dist/bundle.js"></script>
     <script defer src="bundle.js"></script>
 </body>

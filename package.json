@@ -8,8 +8,8 @@
     "build:demo": "simplifyify demo/index.ts -o demo/bundle.js --debug --bundle",
     "build": "simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle --minify",
     "test": "ts-mocha test/*.ts",
-    "prepare:prev": "npm run build && npm run build:demo && rimraf dist/package.json",
-    "prepare": "npm test",
+    "prepare:prev": "npm run build && npm run build:demo",
+    "prepare": "npm test && rimraf dist/package.json",
     "publish-please": "publish-please",
     "prepublishOnly": "publish-please guard"
   },
