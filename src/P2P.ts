@@ -28,6 +28,8 @@ export const enum EventNames {
     error,
     data,
     roomReady,
+    connected,
+    disconnected,
 
     // Peer connections
     peerJoin,
@@ -49,6 +51,8 @@ export interface Events {
     [EventNames.error]: Error
     [EventNames.data]: {peer: PeerID, data: any}
     [EventNames.roomReady]: void
+    [EventNames.connected]: void
+    [EventNames.disconnected]: void
 
     [EventNames.peerJoin]: PeerID
     [EventNames.peerLeft]: PeerID
@@ -181,6 +185,7 @@ export default class P2P<T extends Packable>
                 this.maxIdleTime
             ) as unknown as number
         }
+        this.emit(EventNames.connected)
     }
 
     async disconnect() {
@@ -192,6 +197,7 @@ export default class P2P<T extends Packable>
             await this.ipfs.stop()
             this.removeAllListeners()
             this.status = ConnectionStatus.OFFLINE
+            this.emit(EventNames.disconnected)
         }
     }
 
