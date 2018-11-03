@@ -13,6 +13,17 @@ type RoomID = PeerID // Alias for the names of rooms
 
 const enum ConnectionStatus { OFFLINE, READY, DISCONNECTING, CONNECTING, ONLINE }
 
+export const enum Errors {
+    SYNC_JOIN           = 'Can not join another room until previous connection is complete',
+    BAD_PEERID          = 'The given peer id is invalid',
+    MUST_BE_IN_ROOM     = 'Must be in a room to do this',
+    NOT_CONNECTED       = 'Wait for `connect` method to resolve',
+    READY_UP            = 'Must be in lobby to ready up',
+    NO_PEERS_IN_ROOM    = 'No other peers have entred this room',
+    ROOM_NOT_READY      = 'Can not perform this action until the room is ready',
+    LIST_MISMATCH       = 'Our list or peers is inconsistent with the peer we joined',
+}
+
 export const enum EventNames {
     error,
     data,
@@ -167,7 +178,7 @@ export default class P2P<T extends Packable>
 
     async joinLobby() {
         if (this.joiningRoom)
-            this.error('Can not join another room until previous connection is complete')
+            this.error(Errors.SYNC_JOIN)
         this.joiningRoom = true
 
         await this.leaveRoom()
@@ -190,10 +201,10 @@ export default class P2P<T extends Packable>
     // TODO: Refactor with joinLobby to be more DRY
     async joinPeer(peer: PeerID) {
         if (!peer)
-            this.error('A peer\'s ID can not be empty')
+            this.error(Errors.BAD_PEERID)
 
         if (this.joiningRoom)
-            this.error('Can not join another room until previous connection is complete')
+            this.error(Errors.SYNC_JOIN)
         this.joiningRoom = true
 
         await this.leaveRoom()
@@ -210,20 +221,20 @@ export default class P2P<T extends Packable>
     // TODO: Disable broadcasting in lobby
     async broadcast(data: any) {
         if (!this.isConnected || !this.roomID)
-            this.error('Must be in a room to broadcast')
+            this.error(Errors.MUST_BE_IN_ROOM)
 
         await this.ipfs.pubsub.publish(this.roomID, pack(data) as Buffer)
     }
 
     async readyUp() {
         if (!this.isConnected || !this.id)
-            this.error('Can not ready up until online. Wait for `connect` method to resolve')
+            this.error(Errors.NOT_CONNECTED)
 
         if (!this.isLobby)
-            this.error('Must be in lobby to ready up')
+            this.error(Errors.READY_UP)
 
         if (this.allRooms.has(this.id) && this.allRooms.get(this.id)!.size == 0)
-            this.error('Can not ready up since no one has joined your room')
+            this.error(Errors.NO_PEERS_IN_ROOM)
 
         await this.leaveRoom()
         this.roomID = this.id
@@ -233,7 +244,7 @@ export default class P2P<T extends Packable>
     /** Generates a random number in [0,1) */
     random() {
       if(!this.isRoomReady)
-          this.error('Can not generate random numbers until room is ready')
+          this.error(Errors.ROOM_NOT_READY)
 
       return nextFloat()
     }
@@ -241,14 +252,14 @@ export default class P2P<T extends Packable>
     /** Generates a random positive integer in [0,`max`) */
     randomUInt(max = 0xFFFFFFFF) {
       if(!this.isRoomReady)
-          this.error('Can not generate random numbers until room is ready')
+          this.error(Errors.ROOM_NOT_READY)
 
       return Math.abs(nextInt()) % max
     }
 
     /** Helper to ensure errors are thrown properly. */
-    private error(error: string | Error): never {
-        if (typeof error == 'string')
+    private error(error: Errors | Error): never {
+        if (!(error instanceof Error))
             error = Error(error)
         this.emit(EventNames.error, error)
         throw error
@@ -286,7 +297,7 @@ export default class P2P<T extends Packable>
 
             case ReadyUpInfo:
                 if (this.hashPeerMap() != (msg as ReadyUpInfo).hash)
-                    this.error('Our list or peers is inconsistent with the peer we joined')
+                    this.error(Errors.LIST_MISMATCH)
 
                 seedInt((msg as ReadyUpInfo).hash)
                 this.emit(EventNames.roomReady)

@@ -2,6 +2,7 @@ import 'mocha'
 import 'should'
 import createNode, {EventNames, MockP2Popts} from './util/LocalP2P'
 import {delay, forEvent, forEventValue} from './util/util'
+import {Errors} from '../src/P2P'
 
 type MockP2P = ReturnType<typeof createNode>
 
@@ -49,16 +50,14 @@ describe('Basic P2P Nodes', function () {
         node1.isConnected.should.be.false()
     })
 
-    it.only('Should block a second connection', async () => {
-        const err = 'Can not join another room until previous connection is complete'
-
-        forEvent(node1, EventNames.error).should.not.fulfilledWith(err)
+    it('Should block a second connection', async () => {
+        forEvent(node1, EventNames.error).should.not.fulfilledWith(Errors.SYNC_JOIN)
 
         Promise.all([
             node1.joinLobby(),
             node1.joinLobby(),
         ])
-            .should.rejectedWith(err)
+            .should.rejectedWith(Errors.SYNC_JOIN)
             .then(() => node1.disconnect())
             .catch(err => {}) // ignore
     })
