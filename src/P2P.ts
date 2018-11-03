@@ -60,12 +60,15 @@ export default class P2P<T extends Packable>
     private readonly maxIdleTime: number
     private maxIdleTimeHandle?: number
 
+    private joiningRoom = false
+
     constructor(
         public readonly name: T,
         pkg: string,
         {
             allowSameBrowser = false,
-            repo = `/tmp/p2p-lobby/${version}/${pkg}${allowSameBrowser ? '/' + Math.random().toString().substr(2) : ''}`,
+            repo = `/tmp/p2p-lobby/${version}/${pkg}${
+                allowSameBrowser ? '/' + Math.random().toString().substr(2) : ''}`,
             Swarm = ['/dns4/ws-star.discovery.libp2p.io/tcp/443/wss/p2p-websocket-star'],
             pollInterval = 1000,
             maxIdleTime = 0,
@@ -86,7 +89,7 @@ export default class P2P<T extends Packable>
         this.onMessage = this.onMessage.bind(this)
 
         this.ipfs.once('ready', () => this.status = ConnectionStatus.READY)
-        this.ipfs.on('error', err => this.emit(EventNames.error, err))
+        this.ipfs.on('error', err => this.error(err))
         addEventListener('beforeunload', async e => {
             e.preventDefault()
             await this.disconnect()
@@ -163,6 +166,10 @@ export default class P2P<T extends Packable>
     }
 
     async joinLobby() {
+        if (this.joiningRoom)
+            this.error('Can not join another room until previous connection is complete')
+        this.joiningRoom = true
+
         await this.leaveRoom()
         await this.connect()
 
@@ -177,20 +184,27 @@ export default class P2P<T extends Packable>
         await this.pollPeers(this.id)
         this.roomID = this.LOBBY_ID
         await this.pollPeers()
+        this.joiningRoom = false
     }
 
     // TODO: Refactor with joinLobby to be more DRY
     async joinPeer(peer: PeerID) {
-        if (peer) {
-            await this.leaveRoom()
-            await this.connect()
+        if (!peer)
+            this.error('A peer\'s ID can not be empty')
 
-            await this.ipfs.pubsub.subscribe(peer, this.onMessage, {discover: true})
-            if (!this.allRooms.has(peer))
-                this.allRooms.set(peer, new Set)
-            this.roomID = peer
-            await this.pollPeers()
-        }
+        if (this.joiningRoom)
+            this.error('Can not join another room until previous connection is complete')
+        this.joiningRoom = true
+
+        await this.leaveRoom()
+        await this.connect()
+
+        await this.ipfs.pubsub.subscribe(peer, this.onMessage, {discover: true})
+        if (!this.allRooms.has(peer))
+            this.allRooms.set(peer, new Set)
+        this.roomID = peer
+        await this.pollPeers()
+        this.joiningRoom = false
     }
 
     // TODO: Disable broadcasting in lobby
@@ -233,7 +247,7 @@ export default class P2P<T extends Packable>
     }
 
     /** Helper to ensure errors are thrown properly. */
-    private error(error: string | Error) {
+    private error(error: string | Error): never {
         if (typeof error == 'string')
             error = Error(error)
         this.emit(EventNames.error, error)

@@ -49,6 +49,20 @@ describe('Basic P2P Nodes', function () {
         node1.isConnected.should.be.false()
     })
 
+    it.only('Should block a second connection', async () => {
+        const err = 'Can not join another room until previous connection is complete'
+
+        forEvent(node1, EventNames.error).should.not.fulfilledWith(err)
+
+        Promise.all([
+            node1.joinLobby(),
+            node1.joinLobby(),
+        ])
+            .should.rejectedWith(err)
+            .then(() => node1.disconnect())
+            .catch(err => {}) // ignore
+    })
+
     describe('Idling', function () {
         const IDLE_TIME = 100
         options.maxIdleTime = IDLE_TIME
