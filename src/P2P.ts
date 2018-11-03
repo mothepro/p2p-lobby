@@ -22,6 +22,7 @@ export const enum Errors {
     NO_PEERS_IN_ROOM    = 'No other peers have entred this room',
     ROOM_NOT_READY      = 'Can not perform this action until the room is ready',
     LIST_MISMATCH       = 'Our list or peers is inconsistent with the peer we joined',
+    UNEXPECTED_MESSAGE  = 'An unexpected message was recieved',
 }
 
 export const enum EventNames {
@@ -193,6 +194,7 @@ export default class P2P<T extends Packable>
             this.status = ConnectionStatus.DISCONNECTING
             this.allRooms.clear()
             this.allPeers.clear()
+            delete this.readyPeers
             delete this.roomID
             await this.ipfs.stop()
             this.emit(EventNames.disconnected)
@@ -283,9 +285,11 @@ export default class P2P<T extends Packable>
     }
 
     /** Helper to ensure errors are thrown properly. */
-    private error(error: Errors | Error): never {
+    private error(error: Errors | Error, extra: object = {}): never {
         if (!(error instanceof Error))
             error = Error(error)
+        for(const [prop, value] of Object.entries(extra))
+            (error as any)[prop] = value
         this.emit(EventNames.error, error)
         throw error
     }
@@ -324,12 +328,23 @@ export default class P2P<T extends Packable>
                     this.error(Errors.LIST_MISMATCH)
 
                 seedInt((msg as ReadyUpInfo).hash)
-                this.emit(EventNames.roomReady)
+
+                this.readyPeers = new Map(this.peers)
+
+                Promise.all([
+                    this.ipfs.pubsub.unsubscribe(this.roomID, this.onMessage),
+                    this.ipfs.pubsub.subscribe(
+                        this.roomID,
+                        ({from, data}) => this.emit(EventNames.data, {
+                            data: unpack(data),
+                            peer: from.toString(),
+                        })
+                    ),
+                ]).then(() => this.emit(EventNames.roomReady))
                 break
 
-            default: // TODO: Refactor so this should is only done outside of the lobby
-                if (topicIDs.includes(this.roomID))
-                    this.emit(EventNames.data, {data, peer})
+            default:
+                this.error(Errors.UNEXPECTED_MESSAGE)
         }
     }
 

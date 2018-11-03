@@ -39,6 +39,9 @@
   "browserify": {
     "transform": [
       "browserify-shim"
+    ],
+    "paths": [
+      "./demo"
     ]
   },
   "browserify-shim": {

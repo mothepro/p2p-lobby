@@ -10,29 +10,37 @@
 <body>
     <div class="container" id="app">
         <h1>P2P Lobby Demo</h1>
-        <form id="joinLobby" autocomplete="off">
-            <input
-                    type="text"
+
+        <form id="joinLobby" autocomplete="off" class="input-group mb-3">
+            <input  type="text"
+                    class="form-control"
                     id="name"
                     placeholder="Name"
                     required
+                    autofocus
                     pattern="\S\S.*"
                     maxlength="50"
-                    title="2 characters minimum"
-            />
-            <input type="submit" class="btn btn-primary" value="Join Lobby"/>
+                    title="2 characters minimum" />
+            <div class="input-group-append">
+                <input type="submit" class="btn btn-primary" value="Join Lobby" />
+            </div>
         </form>
-        <div id="chatbox">
-        <!-- <div id="chatbox" style="display: none"> -->
-            <form id="chatForm" autocomplete="off">
-                <input type="text" id="data" placeholder="Message all peers" required pattern="\S.*"/>
-                <input type="submit" id="share" class="btn btn-primary" value="Send"/>
+        <div id="chatbox" style="display: none">
+            <form id="chatForm" autocomplete="off" class="input-group mb-3">
+                <input type="text" id="data" placeholder="Message all peers" class="form-control" required pattern="\S.*"/>
+                <div class="input-group-append">
+                    <input type="submit" id="share" class="btn btn-primary" value="Send" />
+                </div>
             </form>
-            <button id="randInt" class="btn">Generate Random Integer</button>
-            <button id="randFloat" class="btn">Generate Random Number</button>
-            <button id="disconnect" class="btn">Disconnect</button>
+            <div class="btn-group" role="group" aria-label="Basic example">
+                <button id="randInt" class="btn btn-outline-secondary">Generate Random Integer</button>
+                <button id="randFloat" class="btn btn-outline-secondary">Generate Random Number</button>
+                <button id="disconnect" class="btn btn-danger">Disconnect</button>
+            </div>
         </div>
+        <br/>
         <ul id="my-peers" class="list-group"></ul>
+        <br/>
         <ul id="lobby-peers" class="list-group"></ul>
         <br/>
         Log

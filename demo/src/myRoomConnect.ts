@@ -21,9 +21,9 @@ export default function myRoomConnect(
             When all desired peers have joined click here to ready the room`
 
             li.addEventListener('click', async () => {
-                log('Attempting ready the room', peerName)
+                log('Attempting ready the room')
                 await node.readyUp()
-                log(`Room is ready with ${node.peers} peers`)
+                log(`Room is ready with ${node.peers.size} peers`, [...node.peers])
             })
             peerList.appendChild(li)
         }

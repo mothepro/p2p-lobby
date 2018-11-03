@@ -4,8 +4,8 @@ import {Packer} from '../..'
 export class RandomRequest {
     constructor(public isInt: boolean) {}
 
-    static pack<U>(inst: RandomRequest) { return inst.isInt }
-    static unpack<U>(isInt: boolean) { return new RandomRequest(isInt) }
+    static pack(inst: RandomRequest) { return inst.isInt }
+    static unpack(isInt: boolean) { return new RandomRequest(isInt) }
 }
 
 Packer(RandomRequest)

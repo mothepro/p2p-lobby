@@ -36,21 +36,20 @@ chatForm.addEventListener('submit', async e => {
 })
 
 // Click Request Random Int
-const randInt   = document.getElementById('randInt')! as HTMLButtonElement
-randInt.addEventListener('click', async e => await node.broadcast(new RandomRequest(true)))
+const randInt = document.getElementById('randInt')! as HTMLButtonElement
+randInt.addEventListener('click', async () => await node.broadcast(new RandomRequest(true)))
 
 // Click Request Random Float
 const randFloat = document.getElementById('randFloat')! as HTMLButtonElement
-randFloat.addEventListener('click', async e => await node.broadcast(new RandomRequest(false)))
+randFloat.addEventListener('click', async () => await node.broadcast(new RandomRequest(false)))
 
 // Click disconnect
-const disconnect= document.getElementById('disconnect')! as HTMLButtonElement
-disconnect.addEventListener('click', async e => {
-    log('Node disconnecting')
-    await node.disconnect()
-})
+const disconnect = document.getElementById('disconnect')! as HTMLButtonElement
+disconnect.addEventListener('click', async () => await node.disconnect())
 
 /** Creates a new P2P node binds its events */
+const lc = (arg: {peer: PeerID, joined: boolean}) => lobbyConnect(node, arg),
+      mc = (arg: {peer: PeerID, joined: boolean}) => myRoomConnect(node, arg)
 function createNode<T>(name: T): P2P<T> {
     const node = new P2P(name, `my-demo-${pkgName}@${pkgVersion}`,
         {
@@ -64,12 +63,16 @@ function createNode<T>(name: T): P2P<T> {
     node.on(EventNames.peerJoin, peer => log('Welcome', node.peers.get(peer)))
     node.on(EventNames.peerLeft, peer => log('See ya', node.peers.get(peer)))
 
-    node.on(EventNames.lobbyChange, arg => lobbyConnect(node, arg))
-    node.on(EventNames.meChange, arg => myRoomConnect(node, arg))
+    node.on(EventNames.lobbyChange, lc)
+    node.on(EventNames.meChange, mc)
 
     // Show chat box and clear peer lists for new peers
+    const peerList  = document.getElementById('my-peers')! as HTMLUListElement
     node.on(EventNames.roomReady, () => {
-        const peerList  = document.getElementById('my-peers')! as HTMLUListElement
+        node.removeListener(EventNames.lobbyChange, lc)
+        node.removeListener(EventNames.meChange, lc)
+        log('Room ready')
+        
         app.removeChild(document.getElementById('lobby-peers')!)
         chatbox.style.display = 'block'
 
@@ -95,7 +98,7 @@ function createNode<T>(name: T): P2P<T> {
 
         if (data instanceof RandomRequest) {
             const rand = data.isInt ? node.randomUInt(100) : node.random()
-            log(peerName, 'requested to generate the randome number', rand)
+            log(peerName, 'requested to generate the random number', rand)
         } else
             log(peerName, 'says', data)
     })
