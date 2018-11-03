@@ -4,3 +4,6 @@ dist
 test-data
 package-lock.json
 npm-debug.log
+*.code-workspace
+.DS_Store
+.vscode

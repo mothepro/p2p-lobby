@@ -7,7 +7,7 @@
     "build:prod": "simplifyify index.ts -s p2p -o dist/bundle.js --minify",
     "build:demo": "simplifyify demo/index.ts -o demo/bundle.js --debug --bundle",
     "build": "simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle --minify",
-    "test": "ts-mocha test/*.ts",
+    "test": "ts-mocha test/*.test.ts",
     "prepare": "npm test && rimraf dist/package.json",
     "release": "npm run build && npm run build:demo && np"
   },

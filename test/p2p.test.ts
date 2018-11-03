@@ -7,7 +7,7 @@ import {Errors} from '../src/P2P'
 type MockP2P = ReturnType<typeof createNode>
 
 describe('Basic P2P Nodes', function () {
-    // this.retries(3)
+    this.retries(3)
 
     const options: Partial<MockP2Popts> = {}
     let node1: MockP2P,
@@ -83,7 +83,7 @@ describe('Basic P2P Nodes', function () {
 
     describe('Lobbies', function () {
         it('2 Nodes Join', async () => {
-            const [id2, id1] = await Promise.all([
+            const [[id2], [id1]] = await Promise.all([
                 forEvent(node1, EventNames.peerJoin),
                 forEvent(node2, EventNames.peerJoin),
 
@@ -96,40 +96,26 @@ describe('Basic P2P Nodes', function () {
         })
 
         it('Many Nodes Join', async () => {
-            await Promise.all([
+            node1.on(EventNames.peerLeft, () => {throw Error('No peers should be leaving')})
+
+            const [node1peerIDs] = await Promise.all([
+                forEvent(node1, EventNames.peerJoin, 3),
+
                 node1.joinLobby(),
                 node2.joinLobby(),
                 node3.joinLobby(),
                 node4.joinLobby(),
             ])
 
-            let otherIDs = [node2.getID(), node3.getID(), node4.getID()]
-
-            return new Promise((resolve, reject) => {
-                let events = 0
-
-                node1.on(EventNames.peerLeft, () => reject(Error('No peers should be leaving')))
-
-                node1.on(EventNames.peerJoin, peer => {
-                    events++
-
-                    peer.should.be.oneOf(otherIDs)
-                    otherIDs = otherIDs.filter(id => id != peer)
-
-                    if (events == 3) {
-                        otherIDs.should.be.empty()
-                        node1.peers.should.eql(new Map([
-                            [node2.getID(), node2.name],
-                            [node3.getID(), node3.name],
-                            [node4.getID(), node4.name],
-                        ]))
-                        resolve()
-                    }
-
-                    if (events > 3)
-                        reject(Error('The peerJoin event was called too many times.'))
-                })
-            })
+            node1peerIDs.should.containEql(node2.getID())
+            node1peerIDs.should.containEql(node3.getID())
+            node1peerIDs.should.containEql(node4.getID())
+             
+            node1.peers.should.eql(new Map([
+                [node2.getID(), node2.name],
+                [node3.getID(), node3.name],
+                [node4.getID(), node4.name],
+            ]))
         })
 
         // It seems that ipfs.peers doesn't always update when someone leaves.

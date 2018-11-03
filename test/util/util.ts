@@ -4,12 +4,19 @@ import {Events} from '../../src/P2P'
 type MockP2P = ReturnType<typeof createNode>
 
 // TODO: DRYer approach
-export async function forEvent(node: MockP2P, event: EventNames, times = 1): Promise<Events[typeof event]> {
+export async function forEvent(
+    node: MockP2P,
+    event: EventNames, 
+    times = 1
+): Promise<Events[typeof event][]> {
     let resolver: Function
+    const ret: Events[typeof event][] = []
 
     function waiter(arg: any) {
+        ret.push(arg)
+
         if(--times == 0)
-            resolver(arg)
+            resolver(ret)
     }
 
     return new Promise<any>(resolve => {
@@ -26,11 +33,17 @@ export async function forEventValue(
   event: EventNames,
   value: Events[typeof event],
   times = 1,
-): Promise<Events[typeof event]> {
+): Promise<Events[typeof event][]> {
     let resolver: Function
+    const ret: Events[typeof event][] = []
+
     function waiter(arg: any) {
-        if(arg === value && --times == 0)
-            resolver(arg)
+        if(arg === value) {
+            ret.push(arg)
+
+            if (--times == 0)
+                resolver(ret)
+        }
     }
 
     return new Promise<any>(resolve => {
