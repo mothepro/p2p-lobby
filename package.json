@@ -8,10 +8,8 @@
     "build:demo": "simplifyify demo/index.ts -o demo/bundle.js --debug --bundle",
     "build": "simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle --minify",
     "test": "ts-mocha test/*.ts",
-    "prepare:prev": "npm run build && npm run build:demo",
     "prepare": "npm test && rimraf dist/package.json",
-    "publish-please": "publish-please",
-    "prepublishOnly": "publish-please guard"
+    "release": "npm run build && npm run build:demo && np"
   },
   "files": [
     "dist/"
@@ -30,7 +28,7 @@
     "browserify": "^16.2.3",
     "browserify-shim": "^3.8.14",
     "mocha": "^5.2.0",
-    "publish-please": "^5.1.1",
+    "np": "^3.0.4",
     "rimraf": "^2.6.2",
     "should": "^13.2.3",
     "simplifyify": "^7.0.0",

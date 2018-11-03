@@ -30,11 +30,9 @@ Everything will be exposed under the global variable `p2p`.
   + Use Proto instead of msgpack.
   + Upgrade to a smaller [async emitter](https://github.com/sindresorhus/emittery)
   + Use UInt8Array over Buffers
++ joinPeer should require confirmation from them
 
 ### Publishing
 ```shell
-$ npm prepare:prev
-$ npm version patch
-$ npm run publish-please
-$ git push
+$ npm run release -- patch
 ```
