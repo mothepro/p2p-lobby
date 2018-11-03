@@ -1,16 +1,7 @@
 import createNode, {EventNames} from './LocalP2P'
+import {Events} from '../../src/P2P'
 
 type MockP2P = ReturnType<typeof createNode>
-
-// TODO: replace with events from P2P.ts
-interface Events {
-    [EventNames.error]: Error
-    [EventNames.peerJoin]: string
-    [EventNames.peerLeft]: string
-    [EventNames.peerChange]: string
-    [EventNames.data]: any
-    [EventNames.roomReady]: void
-}
 
 // TODO: DRYer approach
 export async function forEvent(node: MockP2P, event: EventNames, times = 1): Promise<Events[typeof event]> {
@@ -21,7 +12,7 @@ export async function forEvent(node: MockP2P, event: EventNames, times = 1): Pro
             resolver(arg)
     }
 
-    return new Promise(resolve => {
+    return new Promise<any>(resolve => {
         resolver = resolve
         node.on(event, waiter)
     }).then(arg => {
@@ -37,14 +28,12 @@ export async function forEventValue(
   times = 1,
 ): Promise<Events[typeof event]> {
     let resolver: Function
-console.log(`${node.getID()}.on(${event}, ${value}) x ${times}`)
     function waiter(arg: any) {
-console.log(`${node.getID()}.emit(${event}, ${arg}) ... ${arg === value} & ${times} == 1`)
         if(arg === value && --times == 0)
             resolver(arg)
     }
 
-    return new Promise(resolve => {
+    return new Promise<any>(resolve => {
         resolver = resolve
         node.on(event, waiter)
     }).then(arg => {

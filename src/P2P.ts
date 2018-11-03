@@ -33,15 +33,34 @@ export const enum EventNames {
     peerJoin,
     peerLeft,
     peerChange,
+
+    // Lobby specific peer connections
+    lobbyJoin,
+    lobbyLeft,
+    lobbyChange,
+
+    // My room specific peer connections
+    meJoin,
+    meLeft,
+    meChange,
 }
 
-interface Events {
+export interface Events {
     [EventNames.error]: Error
+    [EventNames.data]: {peer: PeerID, data: any}
+    [EventNames.roomReady]: void
+
     [EventNames.peerJoin]: PeerID
     [EventNames.peerLeft]: PeerID
     [EventNames.peerChange]: {peer: PeerID, joined: boolean}
-    [EventNames.data]: {peer: PeerID, data: any}
-    [EventNames.roomReady]: void
+
+    [EventNames.lobbyJoin]: PeerID
+    [EventNames.lobbyLeft]: PeerID
+    [EventNames.lobbyChange]: {peer: PeerID, joined: boolean}
+
+    [EventNames.meJoin]: PeerID
+    [EventNames.meLeft]: PeerID
+    [EventNames.meChange]: {peer: PeerID, joined: boolean}
 }
 
 export interface P2Popts {
@@ -282,12 +301,11 @@ export default class P2P<T extends Packable>
             case Introduction:
                 if (peer == this.id) break // don't track self
 
-                if (topicIDs.includes(this.roomID) && !this.allPeers.has(peer)
-                   && this.allRooms.get(this.roomID)!.has(peer)) {
-                    this.allPeers.set(peer, (msg as Introduction<T>).name)
-                    this.emit(EventNames.peerJoin, peer)
-                    this.emit(EventNames.peerChange, {peer, joined: true})
-                }
+                for(const room of topicIDs)
+                    if (!this.allPeers.has(peer) && this.allRooms.has(room) && this.allRooms.get(room)!.has(peer)) {
+                        this.allPeers.set(peer, (msg as Introduction<T>).name)
+                        this.emitPeerUpdate(peer, room, true)
+                    }
 
                 // Introduce ourselves if peer we know wants to meet us.
                 // (Otherwise the poller will handle it)
@@ -306,6 +324,20 @@ export default class P2P<T extends Packable>
             default: // TODO: Refactor so this should is only done outside of the lobby
                 if (topicIDs.includes(this.roomID))
                     this.emit(EventNames.data, {data, peer})
+        }
+    }
+
+    private emitPeerUpdate(peer: PeerID, room: RoomID, joined: boolean) {
+        this.emit(joined ? EventNames.peerJoin : EventNames.peerLeft, peer)
+        this.emit(EventNames.peerChange, {peer, joined})
+
+        if (room == this.LOBBY_ID) {
+            this.emit(joined ? EventNames.lobbyJoin : EventNames.lobbyLeft, peer)
+            this.emit(EventNames.lobbyChange, {peer, joined})
+
+        } else if (room == this.id) {
+            this.emit(joined ? EventNames.meJoin : EventNames.meLeft, peer)
+            this.emit(EventNames.meChange, {peer, joined})
         }
     }
 
@@ -330,8 +362,7 @@ export default class P2P<T extends Packable>
             // A peer we know joined this room
             else if (!currentPeers.has(peer) && room == this.roomID) {
                 currentPeers.add(peer) // add here so we have it for the event
-                this.emit(EventNames.peerJoin, peer)
-                this.emit(EventNames.peerChange, {peer, joined: true})
+                this.emitPeerUpdate(peer, room, true)
             }
 
             currentPeers.add(peer)
@@ -340,10 +371,8 @@ export default class P2P<T extends Packable>
         for (const peer of peersLeft) {
             if (peer == this.id) continue // don't track self
 
-            // TODO: add events for peers leaving lobby & own room
             if (currentPeers.has(peer) && room == this.roomID) {
-                this.emit(EventNames.peerLeft, peer)
-                this.emit(EventNames.peerChange, {peer, joined: false})
+                this.emitPeerUpdate(peer, room, false)
                 currentPeers.delete(peer) // remove so we don't have it for event
                 this.allPeers.delete(peer) // safe to remove here incase they rejoin with new name
             }

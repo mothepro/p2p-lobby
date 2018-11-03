@@ -7,7 +7,7 @@ import {Errors} from '../src/P2P'
 type MockP2P = ReturnType<typeof createNode>
 
 describe('Basic P2P Nodes', function () {
-    this.retries(3)
+    // this.retries(3)
 
     const options: Partial<MockP2Popts> = {}
     let node1: MockP2P,
@@ -83,13 +83,14 @@ describe('Basic P2P Nodes', function () {
 
     describe('Lobbies', function () {
         it('2 Nodes Join', async () => {
-            await node1.joinLobby()
-            await node2.joinLobby()
-
             const [id2, id1] = await Promise.all([
                 forEvent(node1, EventNames.peerJoin),
                 forEvent(node2, EventNames.peerJoin),
+
+                node1.joinLobby(),
+                node2.joinLobby(),
             ])
+
             node2.getID().should.eql(id2)
             node1.getID().should.eql(id1)
         })
@@ -157,7 +158,7 @@ describe('Basic P2P Nodes', function () {
         this.timeout(10 * 1000) // for readying up
 
         // Resolves once all nodes are ready in node1's room.
-        let allReady: Promise<void[]>
+        let allReady: Promise<any[]> // actually [void, void, void]
 
         beforeEach(function () {
             this.timeout(30 * 1000)
