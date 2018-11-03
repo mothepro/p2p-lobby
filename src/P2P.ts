@@ -156,7 +156,7 @@ export default class P2P<T extends Packable>
         return !!this.readyPeers
     }
 
-    protected get isLobby() {
+    get isLobby() {
         return this.roomID == this.LOBBY_ID
     }
 
@@ -195,9 +195,9 @@ export default class P2P<T extends Packable>
             this.allPeers.clear()
             delete this.roomID
             await this.ipfs.stop()
+            this.emit(EventNames.disconnected)
             this.removeAllListeners()
             this.status = ConnectionStatus.OFFLINE
-            this.emit(EventNames.disconnected)
         }
     }
 

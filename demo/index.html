@@ -10,24 +10,35 @@
 <body>
     <div class="container" id="app">
         <h1>P2P Lobby Demo</h1>
-        <form id="joinLobby">
+        <form id="joinLobby" autocomplete="off">
             <input
                     type="text"
                     id="name"
                     placeholder="Name"
                     required
-                    pattern=".{2,}"
+                    pattern="\S\S.*"
                     maxlength="50"
                     title="2 characters minimum"
             />
-            <input type="submit" id="joinLobbyBtn" value="Join Lobby"/>
+            <input type="submit" class="btn btn-primary" value="Join Lobby"/>
         </form>
-        <ul id="peers" class="list-group"></ul>
+        <div id="chatbox">
+        <!-- <div id="chatbox" style="display: none"> -->
+            <form id="chatForm" autocomplete="off">
+                <input type="text" id="data" placeholder="Message all peers" required pattern="\S.*"/>
+                <input type="submit" id="share" class="btn btn-primary" value="Send"/>
+            </form>
+            <button id="randInt" class="btn">Generate Random Integer</button>
+            <button id="randFloat" class="btn">Generate Random Number</button>
+            <button id="disconnect" class="btn">Disconnect</button>
+        </div>
+        <ul id="my-peers" class="list-group"></ul>
+        <ul id="lobby-peers" class="list-group"></ul>
         <br/>
         Log
         <ul id="messages" class="list-group"></ul>
     </div>
-    <script defer src="https://unpkg.com/p2p-lobby/dist/bundle.js"></script>
+    <script defer src="../dist/bundle.js"></script> <!-- revert!!! -->
     <script defer src="bundle.js"></script>
 </body>
 </html>
