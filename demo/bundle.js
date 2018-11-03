@@ -38,25 +38,56 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 };
 var _this = this;
 Object.defineProperty(exports, "__esModule", { value: true });
-	var __1          = (typeof window !== "undefined" ? window['p2p'] : typeof global !== "undefined" ? global['p2p'] : null);
+var __1 = (typeof window !== "undefined" ? window['p2p'] : typeof global !== "undefined" ? global['p2p'] : null);
 var package_json_1 = require("../package.json");
-	var util_1       = require("./util");
-	var lobbyForm    = document.getElementById('joinLobby');
-	var lobbyBtn     = document.getElementById('joinLobbyBtn');
-	var input        = document.getElementById('name');
-	lobbyForm.addEventListener('submit', function (e) {
-		return __awaiter(_this, void 0, void 0, function () {
-			var node;
+var util_1 = require("./util");
+var node;
+var app = document.getElementById('app'), lobbyForm = document.getElementById('joinLobby'), input = document.getElementById('name'), peerList = document.getElementById('peers');
+function welcome(peer) {
+    var _this = this;
+    var peerName = node.peers.get(peer);
+    util_1.log("Welcome the lobby " + peerName);
+    var li = document.createElement('li');
+    li.className = 'list-group-item list-group-item-action';
+    li.innerHTML = peerName;
+    li.addEventListener('click', function () { return __awaiter(_this, void 0, void 0, function () {
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    if (!!li.className.includes('disabled')) return [3 /*break*/, 2];
+                    util_1.log('Attempting to join', peerName);
+                    li.className += ' disabled';
+                    return [4 /*yield*/, node.joinPeer(peer)];
+                case 1:
+                    _a.sent();
+                    util_1.log('Now waiting in ', peerName, '\'s room');
+                    _a.label = 2;
+                case 2: return [2 /*return*/];
+            }
+        });
+    }); });
+    peerList.appendChild(li);
+}
+function escort(peer) {
+    util_1.log("See ya " + node.peers.get(peer));
+    peerList.removeChild(document.getElementById("peer-" + peer));
+}
+lobbyForm.addEventListener('submit', function (e) { return __awaiter(_this, void 0, void 0, function () {
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
-	            e.preventDefault();
-                lobbyBtn.disabled = true;
+                e.preventDefault();
+                app.removeChild(lobbyForm);
                 util_1.log('Creating Node');
-	            node = new __1.default(input.value.trim(), "my-demo-" + package_json_1.name + "@" + package_json_1.version, {allowSameBrowser: true});
+                node = new __1.default(input.value.trim(), "my-demo-" + package_json_1.name + "@" + package_json_1.version, {
+                    allowSameBrowser: true,
+                    maxIdleTime: 30 * 60 * 1000,
+                });
                 node.on(0 /* error */, util_1.log);
-                node.on(3 /* peerJoin */, function (peerID) { return util_1.log("Welcome " + node.peers.get(peerID)); });
-                node.on(4 /* peerLeft */, function (peerID) { return util_1.log("See ya " + node.peers.get(peerID)); });
+                node.on(8 /* lobbyJoin */, welcome);
+                node.on(9 /* lobbyLeft */, escort);
+                node.on(3 /* connected */, function () { return util_1.log('Node connected'); });
+                node.on(4 /* disconnected */, function () { return util_1.log('Node disconnected'); });
                 util_1.log('Joining Lobby');
                 return [4 /*yield*/, node.joinLobby()];
             case 1:
@@ -91,14 +122,17 @@ function log() {
     }
     var e_1, _a;
     var li = document.createElement('li');
+    li.className = 'list-group-item';
     var str = [];
     try {
         for (var args_1 = __values(args), args_1_1 = args_1.next(); !args_1_1.done; args_1_1 = args_1.next()) {
             var arg = args_1_1.value;
             if (typeof arg == 'string')
                 str.push(arg);
-            else if (arg instanceof Error)
-                str.push("<b>ERROR " + arg.name + "</b> " + arg.message + " <pre>" + arg.stack + "</pre>");
+            else if (arg instanceof Error) {
+                li.className += ' list-group-item-danger';
+                str.push("<h2>" + arg.name + "</h2> " + arg.message + " <pre>" + arg.stack + "</pre>");
+            }
             else
                 str.push("<pre>" + JSON.stringify(arg, null, 2) + "</pre>");
         }
@@ -113,51 +147,50 @@ function log() {
     li.innerHTML = str.join(' ');
     li.title = "+" + (Date.now() - lastLogTime) + "ms later @ " + Date().toString();
     lastLogTime = Date.now();
-    messagesList.appendChild(li);
+    messagesList.prepend(li);
 }
 exports.log = log;
 },{}],3:[function(require,module,exports){
 module.exports={
-	"name":            "p2p-lobby",
-	"version":         "0.0.7",
-	"description":     "A type safe lobby system built on IPFS",
-	"scripts":         {
-		"build:dev":      "simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle",
-		"build:prod":     "simplifyify index.ts -s p2p -o dist/bundle.js --minify",
-		"build:demo":     "simplifyify demo/index.ts -o demo/bundle.js --debug --bundle",
-		"build":          "simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle --minify",
-		"test":           "ts-mocha test/*.ts",
-		"prepare:prev":   "npm run build && npm run build:demo",
-		"prepare":        "npm test && rimraf dist/package.json",
-		"publish-please": "publish-please",
-		"prepublishOnly": "publish-please guard"
+  "name": "p2p-lobby",
+  "version": "0.0.9",
+  "description": "A type safe lobby system built on IPFS",
+  "scripts": {
+    "build:dev": "simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle",
+    "build:prod": "simplifyify index.ts -s p2p -o dist/bundle.js --minify",
+    "build:demo": "simplifyify demo/index.ts -o demo/bundle.js --debug --bundle",
+    "build": "simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle --minify",
+    "test": "ts-mocha test/*.ts",
+    "prepare:prev": "npm run build && npm run build:demo",
+    "prepare": "npm test && rimraf dist/package.json",
+    "release": "np"
   },
-	"files":           [
+  "files": [
     "dist/"
   ],
-	"dependencies":    {
+  "dependencies": {
     "ipfs": "^0.32.3",
     "ipfs-repo": "^0.24.0",
     "msgpack-lite": "^0.1.26"
   },
   "devDependencies": {
-	  "@types/events":              "^1.2.0",
-	  "@types/mocha":               "^5.2.5",
-	  "@types/msgpack-lite":        "^0.1.6",
-	  "@types/node":                "^10.11.4",
-	  "@types/should":              "^13.0.0",
-	  "browserify":                 "^16.2.3",
-	  "browserify-shim":            "^3.8.14",
-	  "mocha":                      "^5.2.0",
-	  "publish-please":             "^5.1.1",
-	  "rimraf":                     "^2.6.2",
-	  "should":                     "^13.2.3",
-	  "simplifyify":                "^7.0.0",
+    "@types/events": "^1.2.0",
+    "@types/mocha": "^5.2.5",
+    "@types/msgpack-lite": "^0.1.6",
+    "@types/node": "^10.11.4",
+    "@types/should": "^13.0.0",
+    "browserify": "^16.2.3",
+    "browserify-shim": "^3.8.14",
+    "mocha": "^5.2.0",
+    "np": "^3.0.4",
+    "rimraf": "^2.6.2",
+    "should": "^13.2.3",
+    "simplifyify": "^7.0.0",
     "strict-event-emitter-types": "^2.0.0",
-	  "ts-mocha":                   "^2.0.0",
-	  "typescript":                 "^3.1.1"
+    "ts-mocha": "^2.0.0",
+    "typescript": "^3.1.1"
   },
-	"browserify":      {
+  "browserify": {
     "transform": [
       "browserify-shim"
     ]

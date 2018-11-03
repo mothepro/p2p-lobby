@@ -8,23 +8,25 @@
     <title>P2P Lobby Demo</title>
 </head>
 <body>
-<div class="container">
-    <h1>P2P Lobby Demo</h1>
-    <form id="joinLobby">
-        <input
-                type="text"
-                id="name"
-                placeholder="Name"
-                required
-                pattern=".{2,}"
-                maxlength="50"
-                title="2 characters minimum"
-        />
-        <input type="submit" id="joinLobbyBtn" value="Join Lobby"/>
-    </form>
-    <br/>
-    <ul id="messages"></ul>
-</div>
+    <div class="container" id="app">
+        <h1>P2P Lobby Demo</h1>
+        <form id="joinLobby">
+            <input
+                    type="text"
+                    id="name"
+                    placeholder="Name"
+                    required
+                    pattern=".{2,}"
+                    maxlength="50"
+                    title="2 characters minimum"
+            />
+            <input type="submit" id="joinLobbyBtn" value="Join Lobby"/>
+        </form>
+        <ul id="peers" class="list-group"></ul>
+        <br/>
+        Log
+        <ul id="messages" class="list-group"></ul>
+    </div>
     <script defer src="https://unpkg.com/p2p-lobby/dist/bundle.js"></script>
     <script defer src="bundle.js"></script>
 </body>
