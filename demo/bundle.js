@@ -491,16 +491,16 @@ exports.htmlSafe = htmlSafe;
 },{}],7:[function(require,module,exports){
 module.exports={
   "name": "p2p-lobby",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "description": "A type safe lobby system built on IPFS",
   "scripts": {
     "build:dev": "simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle",
-    "build:prod": "simplifyify index.ts -s p2p -o dist/bundle.js --minify",
+    "build:prod": "simplifyify index.ts -s p2p -o dist/bundle.min.js --minify",
     "build:demo": "simplifyify demo/index.ts -o demo/bundle.js --debug --bundle",
-    "build": "simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle --minify",
-    "test": "ts-mocha test/*.test.ts",
-    "prepare": "npm test && rimraf dist/package.json",
-    "release": "npm run build && npm run build:demo && np"
+    "build": "npm run build:dev && npm run build:prod && npm run build:demo",
+    "test": "tsc --noEmit && mocha --exit --require ts-node/register/transpile-only test/*.test.ts",
+    "prepare": "tsc && rimraf dist/package.json && npm run build",
+    "release": "np"
   },
   "files": [
     "dist/"
@@ -524,7 +524,7 @@ module.exports={
     "should": "^13.2.3",
     "simplifyify": "^7.0.0",
     "strict-event-emitter-types": "^2.0.0",
-    "ts-mocha": "^2.0.0",
+    "ts-node": "^7.0.1",
     "typescript": "^3.1.1"
   },
   "browserify": {

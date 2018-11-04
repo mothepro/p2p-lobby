@@ -91,6 +91,8 @@ describe('Basic P2P Nodes', function () {
     })
 
     describe('Lobbies', function () {
+        this.timeout(20 * 1000)
+
         it('2 Nodes Join', async () => {
             const [[id2], [id1]] = await Promise.all([
                 forEvent(node1, EventNames.peerJoin),
@@ -153,7 +155,7 @@ describe('Basic P2P Nodes', function () {
         let allReady: Promise<any[]> // actually [void, void, void]
 
         beforeEach(function () {
-            this.timeout(30 * 1000)
+            this.timeout(120 * 1000)
 
             return Promise.all([
                 forEvent(node1, EventNames.peerJoin, 2),
@@ -172,6 +174,7 @@ describe('Basic P2P Nodes', function () {
                 node2.joinPeer(node1.getID()),
                 node3.joinPeer(node1.getID()),
             ]))
+            .catch(err => console.log('ERR', err))
             .then(() => {
                 // Just set a broader scoped var, don't wait for anything
                 allReady = Promise.all([
