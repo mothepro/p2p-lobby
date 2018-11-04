@@ -344,6 +344,9 @@ export default class P2P<T extends Packable>
                 break
 
             case ReadyUpInfo:
+                if (this.isLobby)
+                    this.error(Errors.UNEXPECTED_MESSAGE, {peer, data: msg})
+
                 if (this.hashPeerMap() != (msg as ReadyUpInfo).hash)
                     this.error(Errors.LIST_MISMATCH)
 
@@ -366,7 +369,7 @@ export default class P2P<T extends Packable>
                 break
 
             default:
-                this.error(Errors.UNEXPECTED_MESSAGE)
+                this.error(Errors.UNEXPECTED_MESSAGE, {peer, data: msg})
         }
     }
 
