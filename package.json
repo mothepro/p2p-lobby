@@ -1,6 +1,6 @@
 {
   "name": "p2p-lobby",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "description": "A type safe lobby system built on IPFS",
   "scripts": {
     "build:dev": "simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle",
