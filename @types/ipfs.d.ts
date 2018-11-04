@@ -136,7 +136,7 @@ declare module 'ipfs' {
         publish: (
             topic: string,
             data: Buffer
-        ) => void | Promise<void>
+        ) => Promise<void>
         ls: () => Promise<string[]>
         peers: (topic: string) => Promise<string[]>
     }
