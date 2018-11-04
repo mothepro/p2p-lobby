@@ -105,7 +105,7 @@ export default class P2P<T extends Packable>
             repo = `/tmp/p2p-lobby/${version}/${pkg}${
                 allowSameBrowser ? '/' + Math.random().toString().substr(2) : ''}`,
             Swarm = ['/dns4/ws-star.discovery.libp2p.io/tcp/443/wss/p2p-websocket-star'],
-            pollInterval = 1000,
+            pollInterval = 5 * 1000,
             maxIdleTime = 0,
         }: Partial<P2Popts> = {},
     ) {
@@ -173,7 +173,7 @@ export default class P2P<T extends Packable>
 
         if(this.status == ConnectionStatus.READY)
             try {
-            this.status = ConnectionStatus.CONNECTING
+                this.status = ConnectionStatus.CONNECTING
                 await this.ipfs.start()
                 const {id} = await this.ipfs.id()
                 this.id = id
@@ -186,10 +186,12 @@ export default class P2P<T extends Packable>
                 clearTimeout(this.maxIdleTimeHandle)
 
             this.maxIdleTimeHandle = setTimeout(
-                () => this.isLobby && this.disconnect(),
+                () => this.isLobby && this.allRooms.has(this.id) && this.allRooms.get(this.id)!.size
+                    && this.disconnect(),
                 this.maxIdleTime
             ) as unknown as number
         }
+
         this.emit(EventNames.connected)
     }
 
@@ -228,9 +230,8 @@ export default class P2P<T extends Packable>
                 .set(this.id, new Set)
                 .set(this.LOBBY_ID, new Set)
 
-            await this.pollPeers(this.id)
             this.roomID = this.LOBBY_ID
-            await this.pollPeers()
+            await this.pollPeers(this.id, this.roomID)
         } catch(e) { this.error(e) }
         finally { this.joiningRoom = false }
     }
@@ -244,6 +245,7 @@ export default class P2P<T extends Packable>
             this.error(Errors.SYNC_JOIN)
         this.joiningRoom = true
 
+        clearTimeout(this.maxIdleTimeHandle)
         await this.leaveRoom()
         await this.connect()
 
@@ -252,7 +254,7 @@ export default class P2P<T extends Packable>
             if (!this.allRooms.has(peer))
                 this.allRooms.set(peer, new Set)
             this.roomID = peer
-            await this.pollPeers()
+            await this.pollPeers(this.roomID)
         } catch(e) { this.error(e) }
         finally { this.joiningRoom = false }
     }
@@ -330,7 +332,8 @@ export default class P2P<T extends Packable>
                 for(const room of topicIDs)
                     if (!this.allPeers.has(peer) && this.allRooms.has(room) && this.allRooms.get(room)!.has(peer)) {
                         this.allPeers.set(peer, (msg as Introduction<T>).name)
-                        this.emitPeerUpdate(peer, room, true)
+                        // this.emitPeerUpdate(peer, room, true)
+                        setImmediate(() => this.emitPeerUpdate(peer, room, true))
                     }
 
                 // Introduce ourselves if peer we know wants to meet us.
@@ -380,50 +383,54 @@ export default class P2P<T extends Packable>
         }
     }
 
-    private async pollPeers(room = this.roomID) {
-        if (!this.allRooms.has(room))
-            return
+    private async pollPeers(...rooms: RoomID[]) {
+        const roomsToWatch: RoomID[] = []
 
-        let missingPeerName = false
-        const currentPeers = this.allRooms.get(room)!
-        try {
-            const updatedPeerList = await this.ipfs.pubsub.peers(room).catch(this.error)
+        for (const room of rooms.filter(room => this.allRooms.has(room))) {
+            try {
+                let missingPeerName = false
+                const currentPeers = this.allRooms.get(room)!
+                const updatedPeerList = await this.ipfs.pubsub.peers(room).catch(this.error)
 
-            const peersJoined = updatedPeerList.filter(peer => !currentPeers.has(peer))
-            const peersLeft = [...currentPeers].filter(peer => !updatedPeerList.includes(peer))
+                const peersJoined = updatedPeerList.filter(peer => !currentPeers.has(peer))
+                const peersLeft = [...currentPeers].filter(peer => !updatedPeerList.includes(peer))
 
-            for (const peer of peersJoined) {
-                if (peer == this.id) continue // don't track self
+                for (const peer of peersJoined) {
+                    if (peer == this.id) continue // don't track self
 
-                // An unknown peer joined a room
-                if (!this.allPeers.has(peer))
-                    missingPeerName = true
+                    // An unknown peer joined a room
+                    if (!this.allPeers.has(peer))
+                        missingPeerName = true
 
-                // A peer we know joined this room
-                else if (!currentPeers.has(peer) && room == this.roomID) {
-                    currentPeers.add(peer) // add here so we have it for the event
-                    this.emitPeerUpdate(peer, room, true)
+                    // A peer we know joined this room
+                    else if (!currentPeers.has(peer))
+                        // Make sure currentPeers is updated
+                        setImmediate(() => this.emitPeerUpdate(peer, room, true))
+
+                    currentPeers.add(peer)
                 }
 
-                currentPeers.add(peer)
-            }
+                for (const peer of peersLeft) {
+                    if (peer == this.id) continue // don't track self
 
-            for (const peer of peersLeft) {
-                if (peer == this.id) continue // don't track self
+                    if (currentPeers.has(peer))
+                        this.emitPeerUpdate(peer, room, false)
 
-                if (currentPeers.has(peer) && room == this.roomID)
-                    this.emitPeerUpdate(peer, room, false)
+                    currentPeers.delete(peer)
+                    
+                    if (room == peer) // the host left, go back to the lobby since it will never be ready
+                        await this.joinLobby()
+                }
 
-                currentPeers.delete(peer)
-            }
+                // Introduce myself to everyone so everyone else will as well.
+                if (missingPeerName && room == this.roomID)
+                    await this.broadcast(new Introduction(this.name, true))
 
-            // Introduce myself to everyone so everyone else will as well.
-            if (missingPeerName && room == this.roomID)
-                await this.broadcast(new Introduction(this.name, true))
-        } catch(e) { this.error(e) }
-        finally {
-            setTimeout(() => this.pollPeers(room), this.pollInterval)
+                roomsToWatch.push(room) // only continue watching if error free
+            } catch(e) { this.error(e) }
         }
+
+        setTimeout(async () => await this.pollPeers(...roomsToWatch), this.pollInterval)
     }
 
     /**
