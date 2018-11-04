@@ -122,9 +122,10 @@ export default class P2P<T extends Packable>
         this.pollInterval = pollInterval
         this.maxIdleTime = maxIdleTime
         this.onMessage = this.onMessage.bind(this)
+        this.error = this.error.bind(this)
 
         this.ipfs.once('ready', () => this.status = ConnectionStatus.READY)
-        this.ipfs.on('error', err => this.error(err))
+        this.ipfs.on('error', this.error)
         addEventListener('beforeunload', async e => {
             e.preventDefault()
             await this.disconnect()
@@ -163,18 +164,21 @@ export default class P2P<T extends Packable>
 
     async connect() {
         if(this.status == ConnectionStatus.OFFLINE)
-            await new Promise((resolve, reject) => {
-                this.ipfs.once('ready', resolve)
-                this.ipfs.once('error', reject)
-            })
+            try {
+                await new Promise((resolve, reject) => {
+                    this.ipfs.once('ready', resolve)
+                    this.ipfs.once('error', reject)
+                })
+            } catch(e) { this.error(e) }
 
-        if(this.status == ConnectionStatus.READY) {
+        if(this.status == ConnectionStatus.READY)
+            try {
             this.status = ConnectionStatus.CONNECTING
-            await this.ipfs.start()
-            const {id} = await this.ipfs.id()
-            this.id = id
-            this.status = ConnectionStatus.ONLINE
-        }
+                await this.ipfs.start()
+                const {id} = await this.ipfs.id()
+                this.id = id
+                this.status = ConnectionStatus.ONLINE
+            } catch(e) { this.error(e) }
 
         // disconnect after idling for some time, if still in Lobby
         if (this.maxIdleTime) {
@@ -196,10 +200,14 @@ export default class P2P<T extends Packable>
             this.allPeers.clear()
             delete this.readyPeers
             delete this.roomID
-            await this.ipfs.stop()
-            this.emit(EventNames.disconnected)
-            this.removeAllListeners()
-            this.status = ConnectionStatus.OFFLINE
+            try { await this.ipfs.stop() }
+            catch(e) { this.error(e) }
+            finally {
+                this.status = ConnectionStatus.OFFLINE
+                this.emit(EventNames.disconnected)
+                this.ipfs.removeAllListeners()
+                this.removeAllListeners()
+            }
         }
     }
 
@@ -212,17 +220,19 @@ export default class P2P<T extends Packable>
         await this.connect()
 
         // Join my own room to check for people who wanna join me.
-        await this.ipfs.pubsub.subscribe(this.id, this.onMessage, {discover: true})
-        await this.ipfs.pubsub.subscribe(this.LOBBY_ID, this.onMessage, {discover: true})
+        try {
+            await this.ipfs.pubsub.subscribe(this.id, this.onMessage, {discover: true})
+            await this.ipfs.pubsub.subscribe(this.LOBBY_ID, this.onMessage, {discover: true})
 
-        this.allRooms
-            .set(this.id, new Set)
-            .set(this.LOBBY_ID, new Set)
+            this.allRooms
+                .set(this.id, new Set)
+                .set(this.LOBBY_ID, new Set)
 
-        await this.pollPeers(this.id)
-        this.roomID = this.LOBBY_ID
-        await this.pollPeers()
-        this.joiningRoom = false
+            await this.pollPeers(this.id)
+            this.roomID = this.LOBBY_ID
+            await this.pollPeers()
+        } catch(e) { this.error(e) }
+        finally { this.joiningRoom = false }
     }
 
     // TODO: Refactor with joinLobby to be more DRY
@@ -237,12 +247,14 @@ export default class P2P<T extends Packable>
         await this.leaveRoom()
         await this.connect()
 
-        await this.ipfs.pubsub.subscribe(peer, this.onMessage, {discover: true})
-        if (!this.allRooms.has(peer))
-            this.allRooms.set(peer, new Set)
-        this.roomID = peer
-        await this.pollPeers()
-        this.joiningRoom = false
+        try {
+            await this.ipfs.pubsub.subscribe(peer, this.onMessage, {discover: true})
+            if (!this.allRooms.has(peer))
+                this.allRooms.set(peer, new Set)
+            this.roomID = peer
+            await this.pollPeers()
+        } catch(e) { this.error(e) }
+        finally { this.joiningRoom = false }
     }
 
     // TODO: Disable broadcasting in lobby
@@ -250,7 +262,8 @@ export default class P2P<T extends Packable>
         if (!this.isConnected || !this.roomID)
             this.error(Errors.MUST_BE_IN_ROOM)
 
-        await this.ipfs.pubsub.publish(this.roomID, pack(data) as Buffer)
+        try { await this.ipfs.pubsub.publish(this.roomID, pack(data) as Buffer) }
+        catch(e) { this.error(e) }
     }
 
     async readyUp() {
@@ -270,18 +283,18 @@ export default class P2P<T extends Packable>
 
     /** Generates a random number in [0,1) */
     random() {
-      if(!this.isRoomReady)
-          this.error(Errors.ROOM_NOT_READY)
+        if(!this.isRoomReady)
+            this.error(Errors.ROOM_NOT_READY)
 
-      return nextFloat()
+        return nextFloat()
     }
 
     /** Generates a random positive integer in [0,`max`) */
     randomUInt(max = 0xFFFFFFFF) {
-      if(!this.isRoomReady)
-          this.error(Errors.ROOM_NOT_READY)
+        if(!this.isRoomReady)
+            this.error(Errors.ROOM_NOT_READY)
 
-      return Math.abs(nextInt()) % max
+        return Math.abs(nextInt()) % max
     }
 
     /** Helper to ensure errors are thrown properly. */
@@ -296,10 +309,13 @@ export default class P2P<T extends Packable>
 
     private async leaveRoom() {
         if(this.roomID && (this.isConnected || this.status == ConnectionStatus.DISCONNECTING)) {
-            await this.ipfs.pubsub.unsubscribe(this.roomID, this.onMessage)
-            this.allRooms.delete(this.roomID)
-            delete this.readyPeers
-            delete this.roomID
+            try { await this.ipfs.pubsub.unsubscribe(this.roomID, this.onMessage) }
+            catch(e) { this.error(e) }
+            finally {
+                this.allRooms.delete(this.roomID)
+                delete this.readyPeers
+                delete this.roomID
+            }
         }
     }
 
@@ -340,7 +356,9 @@ export default class P2P<T extends Packable>
                             peer: from.toString(),
                         })
                     ),
-                ]).then(() => this.emit(EventNames.roomReady))
+                ])
+                    .then(() => this.emit(EventNames.roomReady))
+                    .catch(this.error)
                 break
 
             default:
@@ -368,44 +386,44 @@ export default class P2P<T extends Packable>
 
         let missingPeerName = false
         const currentPeers = this.allRooms.get(room)!
-        const updatedPeerList = await this.ipfs.pubsub.peers(room)
+        try {
+            const updatedPeerList = await this.ipfs.pubsub.peers(room).catch(this.error)
 
-        const peersJoined = updatedPeerList.filter(peer => !currentPeers.has(peer))
-        const peersLeft = [...currentPeers].filter(peer => !updatedPeerList.includes(peer))
+            const peersJoined = updatedPeerList.filter(peer => !currentPeers.has(peer))
+            const peersLeft = [...currentPeers].filter(peer => !updatedPeerList.includes(peer))
 
-        for (const peer of peersJoined) {
-            if (peer == this.id) continue // don't track self
+            for (const peer of peersJoined) {
+                if (peer == this.id) continue // don't track self
 
-            // An unknown peer joined a room
-            if (!this.allPeers.has(peer))
-                missingPeerName = true
+                // An unknown peer joined a room
+                if (!this.allPeers.has(peer))
+                    missingPeerName = true
 
-            // A peer we know joined this room
-            else if (!currentPeers.has(peer) && room == this.roomID) {
-                currentPeers.add(peer) // add here so we have it for the event
-                this.emitPeerUpdate(peer, room, true)
+                // A peer we know joined this room
+                else if (!currentPeers.has(peer) && room == this.roomID) {
+                    currentPeers.add(peer) // add here so we have it for the event
+                    this.emitPeerUpdate(peer, room, true)
+                }
+
+                currentPeers.add(peer)
             }
 
-            currentPeers.add(peer)
-        }
+            for (const peer of peersLeft) {
+                if (peer == this.id) continue // don't track self
 
-        for (const peer of peersLeft) {
-            if (peer == this.id) continue // don't track self
+                if (currentPeers.has(peer) && room == this.roomID)
+                    this.emitPeerUpdate(peer, room, false)
 
-            if (currentPeers.has(peer) && room == this.roomID) {
-                this.emitPeerUpdate(peer, room, false)
-                currentPeers.delete(peer) // remove so we don't have it for event
-                this.allPeers.delete(peer) // safe to remove here incase they rejoin with new name
+                currentPeers.delete(peer)
             }
 
-            currentPeers.delete(peer)
+            // Introduce myself to everyone so everyone else will as well.
+            if (missingPeerName && room == this.roomID)
+                await this.broadcast(new Introduction(this.name, true))
+        } catch(e) { this.error(e) }
+        finally {
+            setTimeout(() => this.pollPeers(room), this.pollInterval)
         }
-
-        // Introduce myself to everyone so everyone else will as well.
-        if (missingPeerName && room == this.roomID)
-            await this.broadcast(new Introduction(this.name, true))
-
-        setTimeout(() => this.pollPeers(room), this.pollInterval)
     }
 
     /**
