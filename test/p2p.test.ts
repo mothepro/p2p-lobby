@@ -7,7 +7,7 @@ import {Errors} from '../src/P2P'
 type MockP2P = ReturnType<typeof createNode>
 
 describe('Basic P2P Nodes', function () {
-    this.retries(3)
+    this.retries(2)
 
     const options: Partial<MockP2Popts> = {}
     let node1: MockP2P,
@@ -44,10 +44,14 @@ describe('Basic P2P Nodes', function () {
     it('Connect & Disconnect', async function () {
         this.timeout(5 * 1000) // wait longer for disconnection
 
-        await node1.connect()
-        node1.isConnected.should.be.true()
-        await node1.disconnect()
-        node1.isConnected.should.be.false()
+        const node = createNode()
+        node.isConnected.should.be.false()
+
+        await node.connect()
+        node.isConnected.should.be.true()
+
+        await node.disconnect()
+        node.isConnected.should.be.false()
     })
 
     it('Should block a second connection', async () => {
@@ -63,13 +67,20 @@ describe('Basic P2P Nodes', function () {
     })
 
     describe('Idling', function () {
+        this.retries(0)
+        this.timeout(5 * 1000)
+
         const IDLE_TIME = 100
         options.maxIdleTime = IDLE_TIME
 
         it('Kick me from lobby', async () => {
-            node1.joinLobby()
+            await node1.joinLobby()
             node1.isConnected.should.be.true()
-            await delay(IDLE_TIME)
+
+             await Promise.all([
+                forEvent(node1, EventNames.disconnected),
+                delay(IDLE_TIME),
+            ])
             node1.isConnected.should.be.false()
         })
 

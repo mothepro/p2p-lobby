@@ -185,8 +185,9 @@ export default class P2P<T extends Packable>
             if (this.maxIdleTimeHandle)
                 clearTimeout(this.maxIdleTimeHandle)
 
-            this.maxIdleTimeHandle = setTimeout(
-                () => this.isLobby && this.allRooms.has(this.id) && this.allRooms.get(this.id)!.size
+            this.maxIdleTimeHandle = setTimeout(() =>
+                this.isLobby && this.allRooms.has(this.id)
+                && this.allRooms.get(this.id)!.size == 0
                     && this.disconnect(),
                 this.maxIdleTime
             ) as unknown as number
@@ -231,7 +232,7 @@ export default class P2P<T extends Packable>
                 .set(this.LOBBY_ID, new Set)
 
             this.roomID = this.LOBBY_ID
-            await this.pollPeers(this.id, this.roomID)
+            await this.pollPeers([this.id, this.roomID])
         } catch(e) { this.error(e) }
         finally { this.joiningRoom = false }
     }
@@ -254,7 +255,7 @@ export default class P2P<T extends Packable>
             if (!this.allRooms.has(peer))
                 this.allRooms.set(peer, new Set)
             this.roomID = peer
-            await this.pollPeers(this.roomID)
+            await this.pollPeers([this.roomID])
         } catch(e) { this.error(e) }
         finally { this.joiningRoom = false }
     }
@@ -383,7 +384,7 @@ export default class P2P<T extends Packable>
         }
     }
 
-    private async pollPeers(...rooms: RoomID[]) {
+    private async pollPeers(rooms: RoomID[]) {
         const roomsToWatch: RoomID[] = []
 
         for (const room of rooms.filter(room => this.allRooms.has(room))) {
@@ -430,7 +431,7 @@ export default class P2P<T extends Packable>
             } catch(e) { this.error(e) }
         }
 
-        setTimeout(async () => await this.pollPeers(...roomsToWatch), this.pollInterval)
+        setTimeout(async () => await this.pollPeers(roomsToWatch), this.pollInterval)
     }
 
     /**
