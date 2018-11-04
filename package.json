@@ -7,7 +7,7 @@
     "build:prod": "simplifyify index.ts -s p2p -o dist/bundle.min.js --minify",
     "build:demo": "simplifyify demo/index.ts -o demo/bundle.js --debug --bundle",
     "build": "npm run build:dev && npm run build:prod && npm run build:demo",
-    "test": "tsc --noEmit && mocha --exit --require ts-node/register/transpile-only test/*.test.ts",
+    "test": "tsc --noEmit && mocha --exit --require ts-node/register/transpile-only --timeout 999999 test/*.test.ts",
     "prepare": "tsc && rimraf dist/package.json && npm run build",
     "release": "np"
   },

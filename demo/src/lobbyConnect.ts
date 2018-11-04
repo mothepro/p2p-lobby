@@ -28,7 +28,7 @@ export default function lobbyConnect(
         li.innerHTML = peerName
         li.id = `lobby-${peer}`
 
-        if (node.isLobby && !hasPeers) {
+        if (node.isLobby && !hasPeers()) {
             const joinBtn = document.createElement('button')
             joinBtn.className = 'btn btn-outline-secondary joinBtn'
             joinBtn.innerHTML = 'Join'

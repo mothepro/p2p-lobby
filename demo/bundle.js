@@ -259,7 +259,7 @@ function lobbyConnect(node, _a) {
         li.className = 'list-group-item list-group-item-action d-flex align-items-center justify-content-between';
         li.innerHTML = peerName;
         li.id = "lobby-" + peer;
-        if (node.isLobby && !myRoomConnect_1.hasPeers) {
+        if (node.isLobby && !myRoomConnect_1.hasPeers()) {
             var joinBtn_1 = document.createElement('button');
             joinBtn_1.className = 'btn btn-outline-secondary joinBtn';
             joinBtn_1.innerHTML = 'Join';
@@ -491,14 +491,14 @@ exports.htmlSafe = htmlSafe;
 },{}],7:[function(require,module,exports){
 module.exports={
   "name": "p2p-lobby",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "description": "A type safe lobby system built on IPFS",
   "scripts": {
     "build:dev": "simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle",
     "build:prod": "simplifyify index.ts -s p2p -o dist/bundle.min.js --minify",
     "build:demo": "simplifyify demo/index.ts -o demo/bundle.js --debug --bundle",
     "build": "npm run build:dev && npm run build:prod && npm run build:demo",
-    "test": "tsc --noEmit && mocha --exit --require ts-node/register/transpile-only test/*.test.ts",
+    "test": "tsc --noEmit && mocha --exit --require ts-node/register/transpile-only --timeout 999999 test/*.test.ts",
     "prepare": "tsc && rimraf dist/package.json && npm run build",
     "release": "np"
   },
