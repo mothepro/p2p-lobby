@@ -164,12 +164,10 @@ export default class P2P<T extends Packable>
 
     async connect() {
         if(this.status == ConnectionStatus.OFFLINE)
-            try {
-                await new Promise((resolve, reject) => {
-                    this.ipfs.once('ready', resolve)
-                    this.ipfs.once('error', reject)
-                })
-            } catch(e) { this.error(e) }
+            await new Promise((resolve, reject) => {
+                this.ipfs.once('ready', resolve)
+                this.ipfs.once('error', reject)
+            }).catch(this.error)
 
         if(this.status == ConnectionStatus.READY)
             try {

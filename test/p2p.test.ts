@@ -15,7 +15,7 @@ describe('Basic P2P Nodes', function () {
         node3: MockP2P
 
     beforeEach(function () {
-        this.timeout(60 * 1000)
+        // this.timeout(60 * 1000)
 
         node1 = createNode(options)
         node2 = createNode(options)
@@ -29,7 +29,7 @@ describe('Basic P2P Nodes', function () {
     })
 
     afterEach(function () {
-        this.timeout(10 * 1000)
+        // this.timeout(10 * 1000)
         return Promise.all([
             node1.disconnect(),
             node2.disconnect(),
@@ -40,7 +40,7 @@ describe('Basic P2P Nodes', function () {
     })
 
     it('Connect & Disconnect', async function () {
-        this.timeout(5 * 1000) // wait longer for disconnection
+        // this.timeout(5 * 1000) // wait longer for disconnection
 
         const node = createNode()
         node.isConnected.should.be.false()
@@ -66,7 +66,7 @@ describe('Basic P2P Nodes', function () {
 
     describe.skip('Idling', function () {
         this.retries(0)
-        this.timeout(5 * 1000)
+        // this.timeout(5 * 1000)
 
         const IDLE_TIME = 100
         options.maxIdleTime = IDLE_TIME
@@ -91,7 +91,7 @@ describe('Basic P2P Nodes', function () {
     })
 
     describe('Lobbies', function () {
-        this.timeout(20 * 1000)
+        // this.timeout(20 * 1000)
 
         it('2 Nodes Join', async () => {
             const [[id2], [id1]] = await Promise.all([
@@ -128,7 +128,7 @@ describe('Basic P2P Nodes', function () {
 
         // It seems that ipfs.peers doesn't always update when someone leaves.
         it.skip('Node Leaving', async function () {
-            this.timeout(5 * 1000) // wait longer for disconnection
+            // this.timeout(5 * 1000) // wait longer for disconnection
 
             await Promise.all([
                 forEvent(node1, EventNames.peerJoin, 2),
@@ -149,13 +149,13 @@ describe('Basic P2P Nodes', function () {
     })
 
     describe('Rooms', function () {
-        this.timeout(10 * 1000) // for readying up
+        // this.timeout(10 * 1000) // for readying up
 
         // Resolves once all nodes are ready in node1's room.
         let allReady: Promise<any[]> // actually [void, void, void]
 
         beforeEach(function () {
-            this.timeout(120 * 1000)
+            // this.timeout(120 * 1000)
 
             return Promise.all([
                 forEvent(node1, EventNames.peerJoin, 2),
