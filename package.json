@@ -45,6 +45,7 @@
     ]
   },
   "browserify-shim": {
-    "..": "global:p2p"
+    "..": "global:p2p",
+    "../..": "global:p2p"
   }
 }

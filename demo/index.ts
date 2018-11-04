@@ -5,6 +5,7 @@ import {name as pkgName, version as pkgVersion} from '../package.json'
 import {PeerID} from 'ipfs'
 import log from './src/log'
 import { RandomRequest } from './src/messages'
+import { htmlSafe } from './src/util';
 
 let node: P2P<string>
 const app = document.getElementById('app')! as HTMLDivElement
@@ -22,7 +23,7 @@ lobbyForm.addEventListener('submit', async e => {
     log('Joining Lobby')
     await node.joinLobby()
 
-    log(node.name, 'is in the lobby')
+    log(htmlSafe(node.name), 'is in the lobby')
 })
 
 // Sending a message
@@ -31,7 +32,7 @@ const chatbox   = document.getElementById('chatbox')! as HTMLDivElement,
       dataInput = document.getElementById('data')! as HTMLInputElement
 chatForm.addEventListener('submit', async e => {
     e.preventDefault()
-    log(`attempting to broadcast "${dataInput.value.trim()}"`)
+    log('Attempting to broadcast:', htmlSafe(dataInput.value.trim()))
     await node.broadcast(dataInput.value.trim())
 })
 
@@ -50,18 +51,21 @@ disconnect.addEventListener('click', async () => await node.disconnect())
 /** Creates a new P2P node binds its events */
 const lc = (arg: {peer: PeerID, joined: boolean}) => lobbyConnect(node, arg),
       mc = (arg: {peer: PeerID, joined: boolean}) => myRoomConnect(node, arg)
-function createNode<T>(name: T): P2P<T> {
+
+function createNode<T extends string | { toString(): string }>(name: T): P2P<T> {
     const node = new P2P(name, `my-demo-${pkgName}@${pkgVersion}`,
         {
             allowSameBrowser: true,
-            maxIdleTime: 30 * 60 * 1000,
+            // maxIdleTime: 30 * 60 * 1000,
         })
+
+    document.title += ` • ${name}`
 
     node.on(EventNames.error, log)
     node.on(EventNames.connected, () => log('Node connected'))
     node.on(EventNames.disconnected, () => log('Node disconnected'))
-    node.on(EventNames.peerJoin, peer => log('Welcome', node.peers.get(peer)))
-    node.on(EventNames.peerLeft, peer => log('See ya', node.peers.get(peer)))
+    node.on(EventNames.peerJoin, peer => log('Welcome', htmlSafe(node.peers.get(peer))))
+    node.on(EventNames.peerLeft, peer => log('See ya', htmlSafe(node.peers.get(peer))))
 
     node.on(EventNames.lobbyChange, lc)
     node.on(EventNames.meChange, mc)
@@ -70,7 +74,7 @@ function createNode<T>(name: T): P2P<T> {
     const peerList  = document.getElementById('my-peers')! as HTMLUListElement
     node.on(EventNames.roomReady, () => {
         node.removeListener(EventNames.lobbyChange, lc)
-        node.removeListener(EventNames.meChange, lc)
+        node.removeListener(EventNames.meChange, mc)
         log('Room ready')
         
         app.removeChild(document.getElementById('lobby-peers')!)
@@ -86,7 +90,7 @@ function createNode<T>(name: T): P2P<T> {
         for(const [peerId, name] of node.peers) {
             const li = document.createElement('li')
             li.className = 'list-group-item'
-            li.innerHTML = name.toString()
+            li.innerHTML = htmlSafe(name)
             li.id = peerId
             peerList.appendChild(li)
         }
@@ -94,13 +98,19 @@ function createNode<T>(name: T): P2P<T> {
 
     // Incoming messages
     node.on(EventNames.data, ({peer, data}: {peer: PeerID, data: any}) => {
-        const peerName = node.peers.has(peer) ? node.peers.get(peer)! : node.name
+        const peerName = htmlSafe(node.peers.has(peer) ? node.peers.get(peer)! : node.name)
 
         if (data instanceof RandomRequest) {
             const rand = data.isInt ? node.randomUInt(100) : node.random()
-            log(peerName, 'requested to generate the random number', rand)
-        } else
-            log(peerName, 'says', data)
+            log(peerName, 'made the random number', rand)
+        } else if (typeof data == 'string')
+            log(peerName, 'says', htmlSafe(data))
+        else {
+            const err = Error('A peer has sent some unexpected data');
+            (err as any).peerID = peer;
+            (err as any).data = data;
+            log(err)
+        }
     })
 
     return node

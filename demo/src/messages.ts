@@ -1,3 +1,4 @@
+/** Sometimes browserify-shim doesn't know to replace "../.." with `window.p2p`. */
 import {Packer} from '../..'
 
 /** Generate a random number [int or float] that matches all the other peer's number. */

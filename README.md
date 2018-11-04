@@ -15,12 +15,19 @@ $ npm run build
 CDN
 ```html
 <!-- Development Build -->
-<script src="https://unpkg.com/p2p-lobby@0.0.1/dist/bundle.js"></script>
+<script src="https://unpkg.com/p2p-lobby/dist/bundle.js"></script>
 
 <!-- Production Build -->
-<script src="https://unpkg.com/p2p-lobby@0.0.1/dist/bundle.min.js"></script>
+<script src="https://unpkg.com/p2p-lobby/dist/bundle.min.js"></script>
 ```
 Everything will be exposed under the global variable `p2p`.
+
+## To be fixed
++ No guarentee that all the peers are ready once the host ready's up
+  + Peers may still be introducing themselves to one another.
++ When a `peer` that is waiting in `node`'s room leaves
+  + `node.peers` won't have access the `peer`'s name
+  + Since `node.allPeers` still has the name, but `peer` is no longer on `node.allRooms.get(LOBBY)`
 
 ## Roadmap
 + Reduce bundled file size

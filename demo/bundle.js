@@ -70,6 +70,7 @@ var myRoomConnect_1 = require("./src/myRoomConnect");
 var package_json_1 = require("../package.json");
 var log_1 = require("./src/log");
 var messages_1 = require("./src/messages");
+var util_1 = require("./src/util");
 var node;
 var app = document.getElementById('app');
 // Join Lobby button is pressed
@@ -86,7 +87,7 @@ lobbyForm.addEventListener('submit', function (e) { return __awaiter(_this, void
                 return [4 /*yield*/, node.joinLobby()];
             case 1:
                 _a.sent();
-                log_1.default(node.name, 'is in the lobby');
+                log_1.default(util_1.htmlSafe(node.name), 'is in the lobby');
                 return [2 /*return*/];
         }
     });
@@ -98,7 +99,7 @@ chatForm.addEventListener('submit', function (e) { return __awaiter(_this, void 
         switch (_a.label) {
             case 0:
                 e.preventDefault();
-                log_1.default("attempting to broadcast \"" + dataInput.value.trim() + "\"");
+                log_1.default('Attempting to broadcast:', util_1.htmlSafe(dataInput.value.trim()));
                 return [4 /*yield*/, node.broadcast(dataInput.value.trim())];
             case 1:
                 _a.sent();
@@ -135,13 +136,13 @@ var lc = function (arg) { return lobbyConnect_1.default(node, arg); }, mc = func
 function createNode(name) {
     var node = new __1.default(name, "my-demo-" + package_json_1.name + "@" + package_json_1.version, {
         allowSameBrowser: true,
-        maxIdleTime: 30 * 60 * 1000,
     });
+    document.title += " \u2022 " + name;
     node.on(0 /* error */, log_1.default);
     node.on(3 /* connected */, function () { return log_1.default('Node connected'); });
     node.on(4 /* disconnected */, function () { return log_1.default('Node disconnected'); });
-    node.on(5 /* peerJoin */, function (peer) { return log_1.default('Welcome', node.peers.get(peer)); });
-    node.on(6 /* peerLeft */, function (peer) { return log_1.default('See ya', node.peers.get(peer)); });
+    node.on(5 /* peerJoin */, function (peer) { return log_1.default('Welcome', util_1.htmlSafe(node.peers.get(peer))); });
+    node.on(6 /* peerLeft */, function (peer) { return log_1.default('See ya', util_1.htmlSafe(node.peers.get(peer))); });
     node.on(10 /* lobbyChange */, lc);
     node.on(13 /* meChange */, mc);
     // Show chat box and clear peer lists for new peers
@@ -149,7 +150,7 @@ function createNode(name) {
     node.on(2 /* roomReady */, function () {
         var e_1, _a;
         node.removeListener(10 /* lobbyChange */, lc);
-        node.removeListener(13 /* meChange */, lc);
+        node.removeListener(13 /* meChange */, mc);
         log_1.default('Room ready');
         app.removeChild(document.getElementById('lobby-peers'));
         chatbox.style.display = 'block';
@@ -163,7 +164,7 @@ function createNode(name) {
                 var _d = __read(_c.value, 2), peerId = _d[0], name_1 = _d[1];
                 var li_1 = document.createElement('li');
                 li_1.className = 'list-group-item';
-                li_1.innerHTML = name_1.toString();
+                li_1.innerHTML = util_1.htmlSafe(name_1);
                 li_1.id = peerId;
                 peerList.appendChild(li_1);
             }
@@ -179,13 +180,19 @@ function createNode(name) {
     // Incoming messages
     node.on(1 /* data */, function (_a) {
         var peer = _a.peer, data = _a.data;
-        var peerName = node.peers.has(peer) ? node.peers.get(peer) : node.name;
+        var peerName = util_1.htmlSafe(node.peers.has(peer) ? node.peers.get(peer) : node.name);
         if (data instanceof messages_1.RandomRequest) {
             var rand = data.isInt ? node.randomUInt(100) : node.random();
-            log_1.default(peerName, 'requested to generate the random number', rand);
+            log_1.default(peerName, 'made the random number', rand);
         }
-        else
-            log_1.default(peerName, 'says', data);
+        else if (typeof data == 'string')
+            log_1.default(peerName, 'says', util_1.htmlSafe(data));
+        else {
+            var err = Error('A peer has sent some unexpected data');
+            err.peerID = peer;
+            err.data = data;
+            log_1.default(err);
+        }
     });
     return node;
 }
@@ -193,7 +200,7 @@ log_1.default('All entries are logged here');
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{"../package.json":6,"./src/lobbyConnect":2,"./src/log":3,"./src/messages":4,"./src/myRoomConnect":5}],2:[function(require,module,exports){
+},{"../package.json":7,"./src/lobbyConnect":2,"./src/log":3,"./src/messages":4,"./src/myRoomConnect":5,"./src/util":6}],2:[function(require,module,exports){
 "use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -232,41 +239,48 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 var log_1 = require("./log");
+var util_1 = require("./util");
+var myRoomConnect_1 = require("./myRoomConnect");
 var peerList = document.getElementById('lobby-peers');
 /** This is triggered when someone joines the lobby */
 function lobbyConnect(node, _a) {
     var _this = this;
     var peer = _a.peer, joined = _a.joined;
-    var peerName = node.peers.get(peer);
+    var peerName = util_1.htmlSafe(node.peers.get(peer));
     if (joined) {
         log_1.default('Welcome to the lobby ', peerName);
         if (peerList.childNodes.length == 0) { // Add title
             var li_1 = document.createElement('li');
-            li_1.className = 'list-group-item list-group-item-primary';
-            li_1.innerHTML = "List of peers connected to the Lobby<br>\n            Click on a name to join their room";
+            li_1.className = 'list-group-item list-group-item-primary d-flex justify-content-between';
+            li_1.innerHTML = 'Peers in the Lobby';
             peerList.appendChild(li_1);
         }
-        var li_2 = document.createElement('li');
-        li_2.className = 'list-group-item list-group-item-action';
-        li_2.innerHTML = peerName;
-        li_2.id = "lobby-" + peer;
-        li_2.addEventListener('click', function () { return __awaiter(_this, void 0, void 0, function () {
-            return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        if (!(node.isLobby && !li_2.className.includes('disabled'))) return [3 /*break*/, 2];
-                        log_1.default('Attempting to join', peerName);
-                        li_2.className += ' disabled';
-                        return [4 /*yield*/, node.joinPeer(peer)];
-                    case 1:
-                        _a.sent();
-                        log_1.default("Now waiting in " + peerName + "'s room");
-                        _a.label = 2;
-                    case 2: return [2 /*return*/];
-                }
-            });
-        }); });
-        peerList.appendChild(li_2);
+        var li = document.createElement('li');
+        li.className = 'list-group-item list-group-item-action d-flex align-items-center justify-content-between';
+        li.innerHTML = peerName;
+        li.id = "lobby-" + peer;
+        if (node.isLobby && !myRoomConnect_1.hasPeers) {
+            var joinBtn_1 = document.createElement('button');
+            joinBtn_1.className = 'btn btn-outline-secondary joinBtn';
+            joinBtn_1.innerHTML = 'Join';
+            joinBtn_1.addEventListener('click', function () { return __awaiter(_this, void 0, void 0, function () {
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0:
+                            log_1.default('Attempting to join', peerName);
+                            joinBtn_1.disabled = true;
+                            return [4 /*yield*/, node.joinPeer(peer)];
+                        case 1:
+                            _a.sent();
+                            peerList.innerHTML = ''; // we don't know about the lobby anymore
+                            log_1.default("Now waiting in " + peerName + "'s room");
+                            return [2 /*return*/];
+                    }
+                });
+            }); });
+            li.appendChild(joinBtn_1);
+        }
+        peerList.appendChild(li);
     }
     else {
         log_1.default(peerName, 'has left the lobby');
@@ -277,8 +291,19 @@ function lobbyConnect(node, _a) {
 }
 exports.default = lobbyConnect;
 
-},{"./log":3}],3:[function(require,module,exports){
+},{"./log":3,"./myRoomConnect":5,"./util":6}],3:[function(require,module,exports){
 "use strict";
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
 var __values = (this && this.__values) || function (o) {
     var m = typeof Symbol === "function" && o[Symbol.iterator], i = 0;
     if (m) return m.call(o);
@@ -292,7 +317,6 @@ var __values = (this && this.__values) || function (o) {
 Object.defineProperty(exports, "__esModule", { value: true });
 var messagesList = document.getElementById('messages');
 var lastLogTime = Date.now();
-var htmlSafe = function (str) { return str.replace('<', '&lt;').replace('>', '&gt;'); };
 function log() {
     var args = [];
     for (var _i = 0; _i < arguments.length; _i++) {
@@ -300,17 +324,20 @@ function log() {
     }
     var e_1, _a;
     var li = document.createElement('li');
-    li.className = 'list-group-item';
+    li.className = 'list-group-item d-flex justify-content-between';
     var str = [];
     try {
         for (var args_1 = __values(args), args_1_1 = args_1.next(); !args_1_1.done; args_1_1 = args_1.next()) {
             var arg = args_1_1.value;
             if (typeof arg == 'string')
-                str.push(htmlSafe(arg));
+                str.push(arg);
             else if (arg instanceof Error) {
                 li.className += ' list-group-item-danger';
-                str.push("<h2>" + arg.name + "</h2> " + arg.message + " <pre>" + arg.stack + "</pre>");
+                str.push("<h2>" + arg.name + "</h2> " + arg.message + "<br>" + (Object.keys(arg).length
+                    ? "Error Props<pre>" + JSON.stringify(__assign({}, arg), null, 2) + "</pre>" : '') + "<br><pre>" + arg.stack + "</pre>");
             }
+            else if (typeof arg == 'number')
+                str.push("<code>" + arg + "</code>");
             else
                 str.push("<pre>" + JSON.stringify(arg, null, 2) + "</pre>");
         }
@@ -322,8 +349,13 @@ function log() {
         }
         finally { if (e_1) throw e_1.error; }
     }
-    li.innerHTML = str.join(' ');
-    li.title = "+" + (Date.now() - lastLogTime) + "ms later @ " + Date().toString();
+    var timeBetween = Date.now() - lastLogTime;
+    li.innerHTML = "<div style=\"overflow-x: auto\">" + str.join(' ') + "</div>\n    <span class=\"badge badge-pill\" title=\"" + Date().toString() + "\">" + (timeBetween > 60 * 1000
+        ? Math.floor(timeBetween / (60 * 1000)) + ' minutes '
+            + Math.floor((timeBetween % (60 * 1000)) / 1000) + ' secs'
+        : timeBetween > 1000
+            ? Math.floor(timeBetween / 1000) + ' secs'
+            : timeBetween + 'ms') + "</span>";
     lastLogTime = Date.now();
     messagesList.prepend(li);
 }
@@ -333,6 +365,7 @@ exports.default = log;
 (function (global){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+/** Sometimes browserify-shim doesn't know to replace "../.." with `window.p2p`. */
 var __1 = (typeof window !== "undefined" ? window['p2p'] : typeof global !== "undefined" ? global['p2p'] : null);
 /** Generate a random number [int or float] that matches all the other peer's number. */
 var RandomRequest = /** @class */ (function () {
@@ -385,53 +418,47 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
-var __read = (this && this.__read) || function (o, n) {
-    var m = typeof Symbol === "function" && o[Symbol.iterator];
-    if (!m) return o;
-    var i = m.call(o), r, ar = [], e;
-    try {
-        while ((n === void 0 || n-- > 0) && !(r = i.next()).done) ar.push(r.value);
-    }
-    catch (error) { e = { error: error }; }
-    finally {
-        try {
-            if (r && !r.done && (m = i["return"])) m.call(i);
-        }
-        finally { if (e) throw e.error; }
-    }
-    return ar;
-};
-var __spread = (this && this.__spread) || function () {
-    for (var ar = [], i = 0; i < arguments.length; i++) ar = ar.concat(__read(arguments[i]));
-    return ar;
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 var log_1 = require("./log");
+var util_1 = require("./util");
 var peerList = document.getElementById('my-peers');
+var numPeersWaiting = 0;
+function hasPeers() {
+    return !!numPeersWaiting;
+}
+exports.hasPeers = hasPeers;
 /** This is triggered when someone joines my room */
 function myRoomConnect(node, _a) {
     var _this = this;
     var peer = _a.peer, joined = _a.joined;
-    var peerName = node.peers.get(peer);
+    var peerName = util_1.htmlSafe(node.peers.get(peer));
     if (joined) {
+        numPeersWaiting++;
         log_1.default(peerName, 'has joined our room');
+        // can't join others if someone is waiting on me
+        document.querySelectorAll('.joinBtn').forEach(function (btn) { return btn.remove(); });
         if (peerList.childNodes.length == 0) { // Add title
             var li_1 = document.createElement('li');
-            li_1.className = 'list-group-item list-group-item-primary';
-            li_1.innerHTML = "List of peers connected our room<br>\n            When all desired peers have joined click here to ready the room";
-            li_1.addEventListener('click', function () { return __awaiter(_this, void 0, void 0, function () {
+            li_1.className = 'list-group-item list-group-item-primary d-flex align-items-center justify-content-between';
+            li_1.innerHTML = 'List of peers connected our room';
+            var readyBtn_1 = document.createElement('button');
+            readyBtn_1.className = 'btn btn-outline-primary';
+            readyBtn_1.innerHTML = 'Ready Up';
+            readyBtn_1.addEventListener('click', function () { return __awaiter(_this, void 0, void 0, function () {
                 return __generator(this, function (_a) {
                     switch (_a.label) {
                         case 0:
+                            readyBtn_1.disabled = true;
                             log_1.default('Attempting ready the room');
                             return [4 /*yield*/, node.readyUp()];
                         case 1:
                             _a.sent();
-                            log_1.default("Room is ready with " + node.peers.size + " peers", __spread(node.peers));
+                            log_1.default('Room is ready with ', node.peers.size, 'peers');
                             return [2 /*return*/];
                     }
                 });
             }); });
+            li_1.appendChild(readyBtn_1);
             peerList.appendChild(li_1);
         }
         var li = document.createElement('li');
@@ -441,6 +468,7 @@ function myRoomConnect(node, _a) {
         peerList.appendChild(li);
     }
     else {
+        numPeersWaiting--;
         log_1.default(peerName, 'has left our room');
         peerList.removeChild(document.getElementById("mine-" + peer));
         if (peerList.children.length == 1) // Remove title
@@ -449,7 +477,18 @@ function myRoomConnect(node, _a) {
 }
 exports.default = myRoomConnect;
 
-},{"./log":3}],6:[function(require,module,exports){
+},{"./log":3,"./util":6}],6:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+/* Prevent XSS */
+function htmlSafe(str) {
+    if (str)
+        return str.toString().replace('<', '&lt;').replace('>', '&gt;');
+    return '';
+}
+exports.htmlSafe = htmlSafe;
+
+},{}],7:[function(require,module,exports){
 module.exports={
   "name": "p2p-lobby",
   "version": "0.0.9",
@@ -497,7 +536,8 @@ module.exports={
     ]
   },
   "browserify-shim": {
-    "..": "global:p2p"
+    "..": "global:p2p",
+    "../..": "global:p2p"
   }
 }
 
