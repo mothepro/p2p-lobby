@@ -258,9 +258,9 @@ export default class P2P<T extends Packable>
         finally { this.joiningRoom = false }
     }
 
-    // TODO: Disable broadcasting in lobby
     async broadcast(data: any) {
-        if (!this.isConnected || !this.roomID)
+        if (!this.isRoomReady
+        && (this.isLobby && !(data instanceof ReadyUpInfo || data instanceof Introduction)))
             this.error(Errors.MUST_BE_IN_ROOM)
 
         try { await this.ipfs.pubsub.publish(this.roomID, pack(data) as Buffer) }
@@ -432,7 +432,8 @@ export default class P2P<T extends Packable>
             } catch(e) { this.error(e) }
         }
 
-        setTimeout(async () => await this.pollPeers(roomsToWatch), this.pollInterval)
+        if (roomsToWatch.length)
+            setTimeout(async () => await this.pollPeers(roomsToWatch), this.pollInterval)
     }
 
     /**

@@ -2,32 +2,45 @@ import 'mocha'
 import 'should'
 import createNode, {EventNames, MockP2Popts} from './util/LocalP2P'
 import {delay, forEvent, forEventValue} from './util/util'
-import {Errors} from '../src/P2P'
+import {Errors, P2Popts} from '../src/P2P'
 
 type MockP2P = ReturnType<typeof createNode>
 
+const options: Partial<MockP2Popts> = {}
+let node1: MockP2P,
+    node2: MockP2P,
+    node3: MockP2P
+
+it('Connect & Disconnect Node', async function () {
+    // this.timeout(5 * 1000) // wait longer for disconnection
+
+    node1 = createNode()
+    node1.isConnected.should.be.false()
+
+    await node1.connect()
+    node1.isConnected.should.be.true()
+
+    await node1.disconnect()
+    node1.isConnected.should.be.false()
+})
+
 describe('Basic P2P Nodes', function () {
     this.retries(2)
-
-    const options: Partial<MockP2Popts> = {}
-    let node1: MockP2P,
-        node2: MockP2P,
-        node3: MockP2P
-
+    
     beforeEach(function () {
         // this.timeout(60 * 1000)
-
+    
         node1 = createNode(options)
         node2 = createNode(options)
         node3 = createNode(options)
-
+    
         return Promise.all([
             node1.connect(),
             node2.connect(),
             node3.connect(),
         ]).then(() => console.log('All nodes connected.'))
     })
-
+    
     afterEach(function () {
         // this.timeout(10 * 1000)
         return Promise.all([
@@ -38,22 +51,9 @@ describe('Basic P2P Nodes', function () {
         .catch(e => {}) // swallow
         .then(() => console.log('All nodes disconnected.'))
     })
-
-    it('Connect & Disconnect', async function () {
-        // this.timeout(5 * 1000) // wait longer for disconnection
-
-        const node = createNode()
-        node.isConnected.should.be.false()
-
-        await node.connect()
-        node.isConnected.should.be.true()
-
-        await node.disconnect()
-        node.isConnected.should.be.false()
-    })
-
+    
     it('Should block a second connection', async () => {
-        forEvent(node1, EventNames.error).should.not.fulfilledWith(Errors.SYNC_JOIN)
+        forEvent(node1, EventNames.error).should.be.fulfilledWith(Errors.SYNC_JOIN)
 
         Promise.all([
             node1.joinLobby(),
@@ -64,12 +64,12 @@ describe('Basic P2P Nodes', function () {
             .catch(err => {}) // ignore
     })
 
-    describe.skip('Idling', function () {
-        this.retries(0)
+    describe('Idling', function () {
         // this.timeout(5 * 1000)
 
         const IDLE_TIME = 100
-        options.maxIdleTime = IDLE_TIME
+        this.beforeAll(() => options.maxIdleTime = IDLE_TIME)
+        this.afterAll(() => options.maxIdleTime = 0)
 
         it('Kick me from lobby', async () => {
             await node1.joinLobby()
@@ -110,7 +110,7 @@ describe('Basic P2P Nodes', function () {
             node1.on(EventNames.peerLeft, () => {throw Error('No peers should be leaving')})
 
             const [node1peerIDs] = await Promise.all([
-                forEvent(node1, EventNames.peerJoin, 3),
+                forEvent(node1, EventNames.peerJoin, 2),
 
                 node1.joinLobby(),
                 node2.joinLobby(),
@@ -127,7 +127,7 @@ describe('Basic P2P Nodes', function () {
         })
 
         // It seems that ipfs.peers doesn't always update when someone leaves.
-        it.skip('Node Leaving', async function () {
+        it('Node Leaving', async function () {
             // this.timeout(5 * 1000) // wait longer for disconnection
 
             await Promise.all([
