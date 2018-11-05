@@ -73,25 +73,28 @@ var messages_1 = require("./src/messages");
 var util_1 = require("./src/util");
 var node;
 var app = document.getElementById('app');
-// Join Lobby button is pressed
+// Create Node & Join Lobby button is pressed
 var lobbyForm = document.getElementById('joinLobby'), nameInput = document.getElementById('name');
-lobbyForm.addEventListener('submit', function (e) { return __awaiter(_this, void 0, void 0, function () {
-    return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0:
-                e.preventDefault();
-                app.removeChild(lobbyForm);
-                log_1.default('Creating Node');
-                node = createNode(nameInput.value.trim());
-                log_1.default('Joining Lobby');
-                return [4 /*yield*/, node.joinLobby()];
-            case 1:
-                _a.sent();
-                log_1.default(util_1.htmlSafe(node.name), 'is in the lobby');
-                return [2 /*return*/];
-        }
+lobbyForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    app.removeChild(lobbyForm);
+    log_1.default('Creating Node');
+    node = new __1.default(nameInput.value.trim(), "my-demo-" + package_json_1.name + "@" + package_json_1.version, {
+        allowSameBrowser: true,
+        maxIdleTime: 30 * 60 * 1000,
     });
-}); });
+    bindNode();
+    document.title += " \u2022 " + node.name; // Makes tab hunting easier
+    joinLobby();
+});
+// Rejoin Lobby button is pressed
+var rejoinBtn = document.getElementById('rejoin');
+rejoinBtn.addEventListener('click', function (e) {
+    e.preventDefault();
+    rejoinBtn.style.display = 'none';
+    bindNode();
+    joinLobby();
+});
 // Sending a message
 var chatbox = document.getElementById('chatbox'), chatForm = document.getElementById('chatForm'), dataInput = document.getElementById('data');
 chatForm.addEventListener('submit', function (e) { return __awaiter(_this, void 0, void 0, function () {
@@ -132,41 +135,54 @@ disconnect.addEventListener('click', function () { return __awaiter(_this, void 
         case 1: return [2 /*return*/, _a.sent()];
     }
 }); }); });
-/** Creates a new P2P node binds its events */
-var lc = function (arg) { return lobbyConnect_1.default(node, arg); }, mc = function (arg) { return myRoomConnect_1.default(node, arg); };
-function createNode(name) {
-    var node = new __1.default(name, "my-demo-" + package_json_1.name + "@" + package_json_1.version, {
-        allowSameBrowser: true,
+/** Connects the node to the lobby */
+function joinLobby() {
+    return __awaiter(this, void 0, void 0, function () {
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    log_1.default('Joining Lobby');
+                    return [4 /*yield*/, node.joinLobby()];
+                case 1:
+                    _a.sent();
+                    log_1.default(util_1.htmlSafe(node.name), 'is in the lobby');
+                    return [2 /*return*/];
+            }
+        });
     });
-    document.title += " \u2022 " + name;
+}
+/** binds the events for the node */
+var myPeerList = document.getElementById('my-peers'), lobbyPeerList = document.getElementById('lobby-peers');
+function bindNode() {
+    if (!node) {
+        log_1.default(Error('Node must be created before binding'));
+        return;
+    }
     node.on(0 /* error */, log_1.default);
     node.on(3 /* connected */, function () { return log_1.default('Node connected'); });
     node.on(4 /* disconnected */, function () {
-        var myPeerList = document.getElementById('my-peers');
-        var lobbyPeerList = document.getElementById('lobby-peers');
         myPeerList.innerHTML = '';
         lobbyPeerList.innerHTML = '';
         chatbox.style.display = 'none';
+        rejoinBtn.style.display = 'block';
         log_1.default('Node disconnected');
     });
     node.on(5 /* peerJoin */, function (peer) { return log_1.default('Welcome', util_1.htmlSafe(node.peers.get(peer))); });
     node.on(6 /* peerLeft */, function (peer) { return log_1.default('See ya', util_1.htmlSafe(node.peers.get(peer))); });
-    node.on(10 /* lobbyChange */, lc);
-    node.on(13 /* meChange */, mc);
+    node.on(10 /* lobbyChange */, function (peerState) { return lobbyConnect_1.default(node, peerState); });
+    node.on(13 /* meChange */, function (peerState) { return myRoomConnect_1.default(node, peerState); });
     // Show chat box and clear peer lists for new peers
-    var peerList = document.getElementById('my-peers');
     node.on(2 /* roomReady */, function () {
         var e_1, _a;
-        node.removeListener(10 /* lobbyChange */, lc);
-        node.removeListener(13 /* meChange */, mc);
         log_1.default('Room ready');
-        app.removeChild(document.getElementById('lobby-peers'));
+        // We dont care about the lobby anymore, but don't remove if they join back
+        lobbyPeerList.innerHTML = '';
         chatbox.style.display = 'block';
-        peerList.innerHTML = '';
+        myPeerList.innerHTML = '';
         var li = document.createElement('li');
         li.className = 'list-group-item list-group-item-primary';
         li.innerHTML = 'List of peers connected to this room';
-        peerList.appendChild(li);
+        myPeerList.appendChild(li);
         try {
             for (var _b = __values(node.peers), _c = _b.next(); !_c.done; _c = _b.next()) {
                 var _d = __read(_c.value, 2), peerId = _d[0], name_1 = _d[1];
@@ -174,7 +190,7 @@ function createNode(name) {
                 li_1.className = 'list-group-item';
                 li_1.innerHTML = util_1.htmlSafe(name_1);
                 li_1.id = peerId;
-                peerList.appendChild(li_1);
+                myPeerList.appendChild(li_1);
             }
         }
         catch (e_1_1) { e_1 = { error: e_1_1 }; }
@@ -202,7 +218,6 @@ function createNode(name) {
             log_1.default(err);
         }
     });
-    return node;
 }
 log_1.default('All entries are logged here');
 
@@ -344,7 +359,7 @@ function log() {
                 str.push("<h2>" + arg.name + "</h2> " + arg.message + "<br>" + (Object.keys(arg).length
                     ? "Error Props<pre>" + JSON.stringify(__assign({}, arg), null, 2) + "</pre>" : '') + "<br><pre>" + arg.stack + "</pre>");
             }
-            else if (typeof arg == 'number')
+            else if (typeof arg == 'number' || typeof arg == 'boolean')
                 str.push("<code>" + arg + "</code>");
             else
                 str.push("<pre>" + JSON.stringify(arg, null, 2) + "</pre>");
@@ -578,6 +593,7 @@ module.exports={
     "browserify-shim": "^3.8.14",
     "mocha": "^5.2.0",
     "np": "^3.0.4",
+    "nyc": "^13.1.0",
     "rimraf": "^2.6.2",
     "should": "^13.2.3",
     "simplifyify": "^7.0.0",

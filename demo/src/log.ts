@@ -18,7 +18,7 @@ export default function log(...args: any[]) {
             }<br><pre>${arg.stack}</pre>`)
         }
 
-        else if (typeof arg == 'number')
+        else if (typeof arg == 'number' || typeof arg == 'boolean')
             str.push(`<code>${arg}</code>`)
 
         else

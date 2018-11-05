@@ -25,6 +25,7 @@
                 <input type="submit" class="btn btn-primary" value="Join Lobby" />
             </div>
         </form>
+        <button id="rejoin" class="btn btn-primary btn-lg" style="display: none">Rejoin Lobby</button>
         <div id="chatbox" style="display: none">
             <form id="chatForm" autocomplete="off" class="input-group mb-3">
                 <input type="text" id="data" placeholder="Message all peers" class="form-control" required pattern="\S.*"/>
@@ -33,8 +34,8 @@
                 </div>
             </form>
             <div class="btn-group" role="group" aria-label="Basic example">
-                <button id="randInt" class="btn btn-outline-secondary">Generate Random Integer</button>
-                <button id="randFloat" class="btn btn-outline-secondary">Generate Random Number</button>
+                <button id="randInt" class="btn btn-outline-secondary">Random Integer</button>
+                <button id="randFloat" class="btn btn-outline-secondary">Math.random()</button>
                 <button id="disconnect" class="btn btn-danger">Disconnect</button>
             </div>
         </div>

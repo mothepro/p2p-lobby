@@ -10,20 +10,34 @@ import { htmlSafe } from './src/util';
 let node: P2P<string>
 const app = document.getElementById('app')! as HTMLDivElement
 
-// Join Lobby button is pressed
+// Create Node & Join Lobby button is pressed
 const lobbyForm = document.getElementById('joinLobby')! as HTMLFormElement,
       nameInput = document.getElementById('name')! as HTMLInputElement
-lobbyForm.addEventListener('submit', async e => {
+lobbyForm.addEventListener('submit', e => {
     e.preventDefault()
     app.removeChild(lobbyForm)
 
     log('Creating Node')
-    node = createNode(nameInput.value.trim())
+    node = new P2P(
+        nameInput.value.trim(),
+        `my-demo-${pkgName}@${pkgVersion}`,
+        {
+            allowSameBrowser: true,
+            maxIdleTime: 30 * 60 * 1000,
+        }
+    )
+    bindNode()
+    document.title += ` • ${node.name}` // Makes tab hunting easier
+    joinLobby()
+})
 
-    log('Joining Lobby')
-    await node.joinLobby()
-
-    log(htmlSafe(node.name), 'is in the lobby')
+// Rejoin Lobby button is pressed
+const rejoinBtn = document.getElementById('rejoin')! as HTMLButtonElement
+rejoinBtn.addEventListener('click', e => {
+    e.preventDefault()
+    rejoinBtn.style.display = 'none'
+    bindNode()
+    joinLobby()
 })
 
 // Sending a message
@@ -49,59 +63,60 @@ randFloat.addEventListener('click', async () => await node.broadcast(new RandomR
 const disconnect = document.getElementById('disconnect')! as HTMLButtonElement
 disconnect.addEventListener('click', async () => await node.disconnect())
 
-/** Creates a new P2P node binds its events */
-const lc = (arg: {peer: PeerID, joined: boolean}) => lobbyConnect(node, arg),
-      mc = (arg: {peer: PeerID, joined: boolean}) => myRoomConnect(node, arg)
+/** Connects the node to the lobby */
+async function joinLobby() {
+    log('Joining Lobby')
+    await node.joinLobby()
+    log(htmlSafe(node.name), 'is in the lobby')
+}
 
-function createNode<T extends string | { toString(): string }>(name: T): P2P<T> {
-    const node = new P2P(name, `my-demo-${pkgName}@${pkgVersion}`,
-        {
-            allowSameBrowser: true,
-            // maxIdleTime: 30 * 60 * 1000,
-        })
-
-    document.title += ` • ${name}`
+/** binds the events for the node */
+const myPeerList = document.getElementById('my-peers')! as HTMLUListElement,
+      lobbyPeerList = document.getElementById('lobby-peers')! as HTMLUListElement
+function bindNode() {
+    if (!node) {
+        log(Error('Node must be created before binding'))
+        return
+    }
 
     node.on(EventNames.error, log)
+
     node.on(EventNames.connected, () => log('Node connected'))
     node.on(EventNames.disconnected, () => {
-        const myPeerList = document.getElementById('my-peers')! as HTMLUListElement
-        const lobbyPeerList = document.getElementById('lobby-peers')! as HTMLUListElement
         myPeerList.innerHTML = ''
         lobbyPeerList.innerHTML = ''
         chatbox.style.display = 'none'
+        rejoinBtn.style.display = 'block'
 
         log('Node disconnected')
     })
+
     node.on(EventNames.peerJoin, peer => log('Welcome', htmlSafe(node.peers.get(peer))))
     node.on(EventNames.peerLeft, peer => log('See ya', htmlSafe(node.peers.get(peer))))
 
-    node.on(EventNames.lobbyChange, lc)
-    node.on(EventNames.meChange, mc)
+    node.on(EventNames.lobbyChange, peerState => lobbyConnect(node, peerState))
+    node.on(EventNames.meChange, peerState => myRoomConnect(node, peerState))
 
     // Show chat box and clear peer lists for new peers
-    const peerList  = document.getElementById('my-peers')! as HTMLUListElement
     node.on(EventNames.roomReady, () => {
-        node.removeListener(EventNames.lobbyChange, lc)
-        node.removeListener(EventNames.meChange, mc)
         log('Room ready')
-        
-        app.removeChild(document.getElementById('lobby-peers')!)
+        // We dont care about the lobby anymore, but don't remove if they join back
+        lobbyPeerList.innerHTML = ''
         chatbox.style.display = 'block'
 
-        peerList.innerHTML = ''
+        myPeerList.innerHTML = ''
 
         const li = document.createElement('li')
         li.className = 'list-group-item list-group-item-primary'
         li.innerHTML = 'List of peers connected to this room'
-        peerList.appendChild(li)
+        myPeerList.appendChild(li)
 
         for(const [peerId, name] of node.peers) {
             const li = document.createElement('li')
             li.className = 'list-group-item'
             li.innerHTML = htmlSafe(name)
             li.id = peerId
-            peerList.appendChild(li)
+            myPeerList.appendChild(li)
         }
     })
 
@@ -121,8 +136,6 @@ function createNode<T extends string | { toString(): string }>(name: T): P2P<T> 
             log(err)
         }
     })
-
-    return node
 }
 
 log('All entries are logged here')
