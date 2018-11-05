@@ -19,7 +19,7 @@ export default function lobbyConnect(
         if (peerList.childNodes.length == 0) { // Add title
             const li = document.createElement('li')
             li.className = 'list-group-item list-group-item-primary d-flex justify-content-between'
-            li.innerHTML = 'Peers in the Lobby'
+            li.innerHTML = 'Peers in the lobby'
             peerList.appendChild(li)
         }
 

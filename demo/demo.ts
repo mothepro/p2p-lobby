@@ -26,7 +26,6 @@ lobbyForm.addEventListener('submit', e => {
             maxIdleTime: 30 * 60 * 1000,
         }
     )
-    bindNode()
     document.title += ` • ${node.name}` // Makes tab hunting easier
     joinLobby()
 })
@@ -36,7 +35,6 @@ const rejoinBtn = document.getElementById('rejoin')! as HTMLButtonElement
 rejoinBtn.addEventListener('click', e => {
     e.preventDefault()
     rejoinBtn.style.display = 'none'
-    bindNode()
     joinLobby()
 })
 
@@ -65,20 +63,19 @@ disconnect.addEventListener('click', async () => await node.disconnect())
 
 /** Connects the node to the lobby */
 async function joinLobby() {
-    log('Joining Lobby')
-    await node.joinLobby()
-    log(htmlSafe(node.name), 'is in the lobby')
+    if (node) {
+        log('Joining Lobby')
+        bindNode(node)
+        await node.joinLobby()
+        log(htmlSafe(node.name), 'is in the lobby')
+    } else
+        log(Error('Node must be created before binding'))
 }
 
 /** binds the events for the node */
 const myPeerList = document.getElementById('my-peers')! as HTMLUListElement,
       lobbyPeerList = document.getElementById('lobby-peers')! as HTMLUListElement
-function bindNode() {
-    if (!node) {
-        log(Error('Node must be created before binding'))
-        return
-    }
-
+function bindNode(node: P2P<string>) {
     node.on(EventNames.error, log)
 
     node.on(EventNames.connected, () => log('Node connected'))
@@ -102,20 +99,19 @@ function bindNode() {
         log('Room ready')
         // We dont care about the lobby anymore, but don't remove if they join back
         lobbyPeerList.innerHTML = ''
-        chatbox.style.display = 'block'
-
         myPeerList.innerHTML = ''
+        chatbox.style.display = 'block'
 
         const li = document.createElement('li')
         li.className = 'list-group-item list-group-item-primary'
-        li.innerHTML = 'List of peers connected to this room'
+        li.innerHTML = 'Peers in this room'
         myPeerList.appendChild(li)
 
         for(const [peerId, name] of node.peers) {
             const li = document.createElement('li')
             li.className = 'list-group-item'
             li.innerHTML = htmlSafe(name)
-            li.id = peerId
+            li.id = `mine-${peerId}`
             myPeerList.appendChild(li)
         }
     })

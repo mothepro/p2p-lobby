@@ -26,7 +26,7 @@ export default function myRoomConnect(
         if (peerList.childNodes.length == 0) { // Add title
             const li = document.createElement('li')
             li.className = 'list-group-item list-group-item-primary d-flex align-items-center justify-content-between'
-            li.innerHTML = 'List of peers connected our room'
+            li.innerHTML = 'Peers in our room'
 
             const readyBtn = document.createElement('button')
             readyBtn.className = 'btn btn-outline-primary'
@@ -43,7 +43,7 @@ export default function myRoomConnect(
         }
 
         const li = document.createElement('li')
-        li.className = 'list-group-item list-group-item-action'
+        li.className = 'list-group-item'
         li.innerHTML = peerName
         li.id = `mine-${peer}`
         peerList.appendChild(li)
