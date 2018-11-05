@@ -124,10 +124,9 @@ function bindNode() {
     node.on(EventNames.data, ({peer, data}: {peer: PeerID, data: any}) => {
         const peerName = htmlSafe(node.peers.has(peer) ? node.peers.get(peer)! : node.name)
 
-        if (data instanceof RandomRequest) {
-            const rand = data.isInt ? node.randomUInt(100) : node.random()
-            log(peerName, 'made the random number', rand)
-        } else if (typeof data == 'string')
+        if (data instanceof RandomRequest)
+            log(peerName, 'made the random number', node.random(data.isInt))
+        else if (typeof data == 'string')
             log(peerName, 'says', htmlSafe(data))
         else {
             const err = Error('A peer has sent some unexpected data');

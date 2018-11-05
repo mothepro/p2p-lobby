@@ -23,6 +23,7 @@ export const enum Errors {
     ROOM_NOT_READY      = 'Can not perform this action until the room is ready',
     LIST_MISMATCH       = 'Our list or peers is inconsistent with the peer we joined',
     UNEXPECTED_MESSAGE  = 'An unexpected message was recieved',
+    POLLING             = 'An error was encountered while polling (Usually safe to ignore)',
 }
 
 export const enum EventNames {
@@ -201,12 +202,13 @@ export default class P2P<T extends Packable>
             this.allPeers.clear()
             delete this.readyPeers
             delete this.roomID
-            try { await this.ipfs.stop() }
-            catch(e) { this.error(e) }
-            finally {
+            try {
+                await this.ipfs.stop()
                 this.status = ConnectionStatus.READY
+            } catch(e) {
+                this.error(e)
+            } finally {
                 this.emit(EventNames.disconnected)
-                this.ipfs.removeAllListeners()
                 this.removeAllListeners()
             }
         }
@@ -282,20 +284,15 @@ export default class P2P<T extends Packable>
         await this.broadcast(new ReadyUpInfo(this.hashPeerMap()))
     }
 
-    /** Generates a random number in [0,1) */
-    random() {
+    /**
+     * Generates a random number in [0,1). Same as Math.random()
+     * If `isInt` is true, than a integer in range [-2 ** 31, 2 ** 32) is generated.
+     */
+    random(isInt = false) {
         if(!this.isRoomReady)
             this.error(Errors.ROOM_NOT_READY)
 
-        return nextFloat()
-    }
-
-    /** Generates a random positive integer in [0,`max`) */
-    randomUInt(max = 0xFFFFFFFF) {
-        if(!this.isRoomReady)
-            this.error(Errors.ROOM_NOT_READY)
-
-        return Math.abs(nextInt()) % max
+        return isInt ? nextInt() : nextFloat()
     }
 
     /** Helper to ensure errors are thrown properly. */
@@ -432,7 +429,9 @@ export default class P2P<T extends Packable>
                     await this.broadcast(new Introduction(this.name, true))
 
                 roomsToWatch.push(room) // only continue watching if error free
-            } catch(e) { this.error(e) }
+            } catch(originalError) { 
+                this.error(Errors.POLLING, {originalError})
+            }
         }
 
         if (roomsToWatch.length)
