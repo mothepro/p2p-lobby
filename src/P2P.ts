@@ -204,7 +204,7 @@ export default class P2P<T extends Packable>
             try { await this.ipfs.stop() }
             catch(e) { this.error(e) }
             finally {
-                this.status = ConnectionStatus.OFFLINE
+                this.status = ConnectionStatus.READY
                 this.emit(EventNames.disconnected)
                 this.ipfs.removeAllListeners()
                 this.removeAllListeners()
