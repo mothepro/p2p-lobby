@@ -82,7 +82,7 @@ describe('Basic P2P Nodes', function () {
             await node1.joinLobby()
             node1.isConnected.should.be.true()
 
-             await Promise.all([
+            await Promise.all([
                 forEvent(node1, EventNames.disconnected),
                 delay(IDLE_TIME),
             ])
@@ -90,9 +90,9 @@ describe('Basic P2P Nodes', function () {
         })
 
         it('Leave me with peer', async () => {
-            node1.joinPeer(node2.getID())
+            await node1.joinPeer(node2.getID())
             node1.isConnected.should.be.true()
-            await delay(IDLE_TIME)
+            await delay(IDLE_TIME * 2)
             node1.isConnected.should.be.true()
         })
     })
@@ -133,9 +133,10 @@ describe('Basic P2P Nodes', function () {
             ]))
         })
 
-        // TODO: fix this? It seems that ipfs.peers doesn't always update when someone leaves.
-        it.skip('Node Leaving', async function () {
-            // this.timeout(5 * 1000) // wait longer for disconnection
+        // Flaky: It seems that ipfs.peers doesn't always update when someone leaves.
+        it('Node Leaving', async function () {
+            this.retries(2)
+            this.timeout(5 * 1000)
 
             await Promise.all([
                 forEvent(node1, EventNames.peerJoin, 2),
@@ -241,7 +242,7 @@ describe('Basic P2P Nodes', function () {
             if(typeof msg1 == 'undefined' || typeof msg2 == 'undefined')
                 throw Error('Nothing was emitted with `node3.on(EventNames.data, void)`')
 
-            msg1.should.be.oneOf(msgs[0], msgs[1])
+            msg1.should.be.oneOf(msgs)
             msg2.should.be.oneOf(msgs)
         })
     })
