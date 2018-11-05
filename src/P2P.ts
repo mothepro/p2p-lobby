@@ -274,7 +274,7 @@ export default class P2P<T extends Packable>
         if (!this.isLobby)
             this.error(Errors.READY_UP)
 
-        if (this.allRooms.has(this.id) && this.allRooms.get(this.id)!.size == 0)
+        if (!this.allRooms.has(this.id) || this.allRooms.get(this.id)!.size == 0)
             this.error(Errors.NO_PEERS_IN_ROOM)
 
         await this.leaveRoom()

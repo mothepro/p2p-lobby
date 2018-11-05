@@ -26,13 +26,17 @@ it('Connect & Disconnect Node', async function () {
 
 describe('Basic P2P Nodes', function () {
     this.retries(2)
-    
+
     beforeEach(function () {
         // this.timeout(60 * 1000)
     
         node1 = createNode(options)
         node2 = createNode(options)
         node3 = createNode(options)
+    
+        node1.on(EventNames.disconnected, () => console.log(`${node1.name} is diconnected. (${node1.getID()})`))
+        node2.on(EventNames.disconnected, () => console.log(`${node2.name} is diconnected. (${node2.getID()})`))
+        node3.on(EventNames.disconnected, () => console.log(`${node3.name} is diconnected. (${node3.getID()})`))
     
         return Promise.all([
             node1.connect(),
@@ -43,6 +47,12 @@ describe('Basic P2P Nodes', function () {
     
     afterEach(function () {
         // this.timeout(10 * 1000)
+
+        // Don't print that we are remove a specific node
+        node1.removeAllListeners()
+        node1.removeAllListeners()
+        node1.removeAllListeners()
+
         return Promise.all([
             node1.disconnect(),
             node2.disconnect(),
@@ -146,6 +156,11 @@ describe('Basic P2P Nodes', function () {
                 node3.disconnect(),
             ])
         })
+
+        it('Can\'t send messages in lobby', async () => {
+            await node1.joinLobby()
+            return node1.broadcast('hello world').should.rejectedWith(Errors.MUST_BE_IN_ROOM)
+        })
     })
 
     describe('Rooms', function () {
@@ -158,21 +173,20 @@ describe('Basic P2P Nodes', function () {
             // this.timeout(120 * 1000)
 
             return Promise.all([
-                forEvent(node1, EventNames.peerJoin, 2),
+                forEvent(node1, EventNames.lobbyJoin),
+                forEvent(node2, EventNames.lobbyJoin),
 
                 node1.joinLobby(),
                 node2.joinLobby(),
-                node3.joinLobby(),
             ])
-            .then(() => console.log('Nodes are in Lobby'))
+            .then(() => console.log('2 Nodes are in Lobby'))
             .then(() => Promise.all([
-                // Wait for other peers to join node1
-                // Since no event is emitted when someone joins me while in lobby
-                forEvent(node2, EventNames.peerJoin),
-                forEvent(node3, EventNames.peerJoin, 2),
+                forEvent(node1, EventNames.meJoin, 2), // Wait for other peers to join node1
+                forEvent(node2, EventNames.peerJoin),  // All peers need to know each other
+                forEvent(node3, EventNames.peerJoin),
 
                 node2.joinPeer(node1.getID()),
-                node3.joinPeer(node1.getID()),
+                node3.joinPeer(node1.getID()), // join directly
             ]))
             .catch(err => console.log('ERR', err))
             .then(() => {
@@ -201,8 +215,37 @@ describe('Basic P2P Nodes', function () {
             node2.getHashPeerMap().should.eql(node3.getHashPeerMap())
         })
 
-        it('Send messages')
+        it('Can\'t send messages before ready', async () => {
+            return node1.broadcast('hello world').should.rejectedWith(Errors.MUST_BE_IN_ROOM)
+        })
 
-        it('Direct Joins')
+        it('Send messages', async () => {
+            await node1.readyUp()
+            await allReady
+
+            const [[msg1, msg2]] = await Promise.all([
+                forEvent(node3, EventNames.data, 2),
+
+                node2.broadcast('hello all'),
+                node1.broadcast('what\'s up peers'),
+            ])
+
+            const msgs = [
+                {
+                    peer: node2.getID(),
+                    data: 'hello all',
+                },
+                {
+                    peer: node1.getID(),
+                    data: 'what\'s up peers',
+                }
+            ]
+
+            if(typeof msg1 == 'undefined' || typeof msg2 == 'undefined')
+                throw Error('Nothing was emitted with `node3.on(EventNames.data, void)`')
+
+            msg1.should.be.oneOf(msgs[0], msgs[1])
+            msg2.should.be.oneOf(msgs)
+        })
     })
 })
