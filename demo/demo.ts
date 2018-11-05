@@ -34,6 +34,7 @@ chatForm.addEventListener('submit', async e => {
     e.preventDefault()
     log('Attempting to broadcast:', htmlSafe(dataInput.value.trim()))
     await node.broadcast(dataInput.value.trim())
+    dataInput.value = ''
 })
 
 // Click Request Random Int
@@ -63,7 +64,15 @@ function createNode<T extends string | { toString(): string }>(name: T): P2P<T> 
 
     node.on(EventNames.error, log)
     node.on(EventNames.connected, () => log('Node connected'))
-    node.on(EventNames.disconnected, () => log('Node disconnected'))
+    node.on(EventNames.disconnected, () => {
+        const myPeerList = document.getElementById('my-peers')! as HTMLUListElement
+        const lobbyPeerList = document.getElementById('lobby-peers')! as HTMLUListElement
+        myPeerList.innerHTML = ''
+        lobbyPeerList.innerHTML = ''
+        chatbox.style.display = 'none'
+
+        log('Node disconnected')
+    })
     node.on(EventNames.peerJoin, peer => log('Welcome', htmlSafe(node.peers.get(peer))))
     node.on(EventNames.peerLeft, peer => log('See ya', htmlSafe(node.peers.get(peer))))
 

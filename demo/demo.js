@@ -103,6 +103,7 @@ chatForm.addEventListener('submit', function (e) { return __awaiter(_this, void 
                 return [4 /*yield*/, node.broadcast(dataInput.value.trim())];
             case 1:
                 _a.sent();
+                dataInput.value = '';
                 return [2 /*return*/];
         }
     });
@@ -140,7 +141,14 @@ function createNode(name) {
     document.title += " \u2022 " + name;
     node.on(0 /* error */, log_1.default);
     node.on(3 /* connected */, function () { return log_1.default('Node connected'); });
-    node.on(4 /* disconnected */, function () { return log_1.default('Node disconnected'); });
+    node.on(4 /* disconnected */, function () {
+        var myPeerList = document.getElementById('my-peers');
+        var lobbyPeerList = document.getElementById('lobby-peers');
+        myPeerList.innerHTML = '';
+        lobbyPeerList.innerHTML = '';
+        chatbox.style.display = 'none';
+        log_1.default('Node disconnected');
+    });
     node.on(5 /* peerJoin */, function (peer) { return log_1.default('Welcome', util_1.htmlSafe(node.peers.get(peer))); });
     node.on(6 /* peerLeft */, function (peer) { return log_1.default('See ya', util_1.htmlSafe(node.peers.get(peer))); });
     node.on(10 /* lobbyChange */, lc);
@@ -479,24 +487,74 @@ exports.default = myRoomConnect;
 
 },{"./log":3,"./util":6}],6:[function(require,module,exports){
 "use strict";
+var __values = (this && this.__values) || function (o) {
+    var m = typeof Symbol === "function" && o[Symbol.iterator], i = 0;
+    if (m) return m.call(o);
+    return {
+        next: function () {
+            if (o && i >= o.length) o = void 0;
+            return { value: o && o[i++], done: !o };
+        }
+    };
+};
+var __read = (this && this.__read) || function (o, n) {
+    var m = typeof Symbol === "function" && o[Symbol.iterator];
+    if (!m) return o;
+    var i = m.call(o), r, ar = [], e;
+    try {
+        while ((n === void 0 || n-- > 0) && !(r = i.next()).done) ar.push(r.value);
+    }
+    catch (error) { e = { error: error }; }
+    finally {
+        try {
+            if (r && !r.done && (m = i["return"])) m.call(i);
+        }
+        finally { if (e) throw e.error; }
+    }
+    return ar;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 /* Prevent XSS */
 function htmlSafe(str) {
-    if (str)
-        return str.toString().replace('<', '&lt;').replace('>', '&gt;');
-    return '';
+    var e_1, _a;
+    if (!str)
+        return '';
+    var unsafeChars = new Map([
+        ['&', '&amp;'],
+        ['<', '&lt;'],
+        ['>', '&gt;'],
+        ['"', '&quot;'],
+        ['\'', '&#x27;'],
+        //(See: section 24.4.1) &apos; is in the XML and XHTML specs.
+        ['/', '&#x2F;'],
+    ]);
+    var ret = str.toString();
+    try {
+        for (var unsafeChars_1 = __values(unsafeChars), unsafeChars_1_1 = unsafeChars_1.next(); !unsafeChars_1_1.done; unsafeChars_1_1 = unsafeChars_1.next()) {
+            var _b = __read(unsafeChars_1_1.value, 2), unsafe = _b[0], safe = _b[1];
+            ret = ret.replace(new RegExp(unsafe, 'g'), safe);
+        }
+    }
+    catch (e_1_1) { e_1 = { error: e_1_1 }; }
+    finally {
+        try {
+            if (unsafeChars_1_1 && !unsafeChars_1_1.done && (_a = unsafeChars_1.return)) _a.call(unsafeChars_1);
+        }
+        finally { if (e_1) throw e_1.error; }
+    }
+    return ret;
 }
 exports.htmlSafe = htmlSafe;
 
 },{}],7:[function(require,module,exports){
 module.exports={
   "name": "p2p-lobby",
-  "version": "0.0.11",
+  "version": "0.0.12",
   "description": "A type safe lobby system built on IPFS",
   "scripts": {
     "build:dev": "simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle",
     "build:prod": "simplifyify index.ts -s p2p -o dist/bundle.min.js --minify",
-    "build:demo": "simplifyify demo/index.ts -o demo/bundle.js --debug --bundle",
+    "build:demo": "simplifyify demo/demo.ts -o demo/demo.js --debug --bundle",
     "build": "npm run build:dev && npm run build:prod && npm run build:demo",
     "test": "tsc --noEmit && mocha --exit --require ts-node/register/transpile-only --timeout 999999 test/*.test.ts",
     "prepare": "tsc && rimraf dist/package.json && npm run build",
@@ -542,4 +600,4 @@ module.exports={
 }
 
 },{}]},{},[1])
-//# sourceMappingURL=bundle.js.map
+//# sourceMappingURL=demo.js.map
