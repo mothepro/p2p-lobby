@@ -136,7 +136,7 @@ describe('Basic P2P Nodes', function () {
         // Flaky: It seems that ipfs.peers doesn't always update when someone leaves.
         it('Node Leaving', async function () {
             this.retries(2)
-            this.timeout(5 * 1000)
+            this.timeout(20 * 1000)
 
             await Promise.all([
                 forEvent(node1, EventNames.peerJoin, 2),
@@ -179,14 +179,14 @@ describe('Basic P2P Nodes', function () {
             ])
             .then(() => console.log('2 Nodes are in Lobby'))
             .then(() => Promise.all([
-                forEvent(node1, EventNames.meJoin, 2), // Wait for other peers to join node1
-                forEvent(node2, EventNames.peerJoin),  // All peers need to know each other
-                forEvent(node3, EventNames.peerJoin),
+                forEvent(node1, EventNames.meJoin, 2),   // Wait for other peers to join node1
+                forEvent(node2, EventNames.peerJoin, 2), // All peers need to know each other
+                forEvent(node3, EventNames.peerJoin, 2),
 
                 node2.joinPeer(node1.getID()),
                 node3.joinPeer(node1.getID()), // join directly
             ]))
-            .catch(err => console.log('ERR', err))
+            .catch(err => console.log('error', err))
             .then(() => {
                 // Just set a broader scoped var, don't wait for anything
                 allReady = Promise.all([
