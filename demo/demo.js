@@ -571,8 +571,10 @@ module.exports={
     "build:prod": "simplifyify index.ts -s p2p -o dist/bundle.min.js --minify",
     "build:demo": "simplifyify demo/demo.ts -o demo/demo.js --debug --bundle",
     "build": "npm run build:dev && npm run build:prod && npm run build:demo",
-    "test": "tsc --noEmit && mocha --exit --require ts-node/register/transpile-only --timeout 999999 test/*.test.ts",
-    "prepare": "tsc && rimraf dist/package.json && npm run build",
+    "mocha": "mocha --exit --require ts-node/register/transpile-only --timeout 999999 test/*.test.ts",
+    "test": "tsc --noEmit && npm run mocha",
+    "coverage": "nyc -r html -r text-summary -n src/**/*.ts -e .ts npm run mocha",
+    "prerelease": "tsc && rimraf dist/package.json && npm run build",
     "release": "np"
   },
   "files": [

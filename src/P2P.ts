@@ -386,6 +386,9 @@ export default class P2P<T extends Packable>
     }
 
     private async pollPeers(rooms: RoomID[]) {
+        if(!this.isConnected) // Stop polling early
+            return
+
         const roomsToWatch: RoomID[] = []
 
         for (const room of rooms.filter(room => this.allRooms.has(room))) {
@@ -433,7 +436,7 @@ export default class P2P<T extends Packable>
         }
 
         if (roomsToWatch.length)
-            setTimeout(async () => await this.pollPeers(roomsToWatch), this.pollInterval)
+            setTimeout(() => this.pollPeers(roomsToWatch), this.pollInterval)
     }
 
     /**
