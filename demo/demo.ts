@@ -1,4 +1,4 @@
-import P2P, { EventNames } from '..'
+import P2P from '..'
 import { name as pkgName, version as pkgVersion } from '../package.json'
 import bindNode from './src/bindNode'
 import log from './src/log'

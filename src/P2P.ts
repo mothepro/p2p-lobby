@@ -7,76 +7,13 @@ import {pack, Packable, unpack} from './packer'
 import {Introduction, ReadyUpInfo} from './messages'
 import {nextFloat, nextInt, seedInt} from './rng'
 import {version} from '../package.json'
+import Errors from './errors'
+import Event, { EventMap } from './events'
 
 type Constructor<Instance> = { new(...args: any[]): Instance }
 type RoomID = PeerID // Alias for the names of rooms
 
 const enum ConnectionStatus { OFFLINE, READY, DISCONNECTING, CONNECTING, ONLINE }
-
-export const enum Errors {
-    SYNC_JOIN           = 'Can not join another room until previous connection is complete',
-    BAD_PEERID          = 'The given peer id is invalid',
-    MUST_BE_IN_ROOM     = 'Must be in a room to do this',
-    NOT_CONNECTED       = 'Wait for `connect` method to resolve',
-    READY_UP            = 'Must be in lobby to ready up',
-    NO_PEERS_IN_ROOM    = 'No other peers have entred this room',
-    ROOM_NOT_READY      = 'Can not perform this action until the room is ready',
-    LIST_MISMATCH       = 'Our list or peers is inconsistent with the peer we joined',
-    UNEXPECTED_MESSAGE  = 'An unexpected message was recieved',
-    POLLING             = 'An error was encountered while polling peers in a room',
-}
-
-export const enum EventNames {
-    error,
-
-    connected,
-    disconnected,
-
-    data,
-    roomReady,
-    roomConnect,
-    lobbyConnect,
-    peerConnect,
-
-    // Peer connections
-    peerJoin,
-    peerLeft,
-    peerChange,
-
-    // Lobby specific peer connections
-    lobbyJoin,
-    lobbyLeft,
-    lobbyChange,
-
-    // My room specific peer connections
-    meJoin,
-    meLeft,
-    meChange,
-}
-
-export interface Events {
-    [EventNames.error]: Error
-    [EventNames.connected]: void
-    [EventNames.disconnected]: void
-
-    [EventNames.data]: {peer: PeerID, data: any}
-    [EventNames.roomReady]: void
-    [EventNames.roomConnect]: void
-    [EventNames.lobbyConnect]: void
-    [EventNames.peerConnect]: void
-
-    [EventNames.peerJoin]: PeerID
-    [EventNames.peerLeft]: PeerID
-    [EventNames.peerChange]: {peer: PeerID, joined: boolean}
-
-    [EventNames.lobbyJoin]: PeerID
-    [EventNames.lobbyLeft]: PeerID
-    [EventNames.lobbyChange]: {peer: PeerID, joined: boolean}
-
-    [EventNames.meJoin]: PeerID
-    [EventNames.meLeft]: PeerID
-    [EventNames.meChange]: {peer: PeerID, joined: boolean}
-}
 
 export interface P2Popts {
     allowSameBrowser: boolean
@@ -87,7 +24,7 @@ export interface P2Popts {
 }
 
 export default class P2P<T extends Packable>
-    extends (EventEmitter as Constructor<StrictEventEmitter<EventEmitter, Events>>) {
+    extends (EventEmitter as Constructor<StrictEventEmitter<EventEmitter, EventMap>>) {
 
     public readonly ipfs: Ipfs
 
@@ -150,14 +87,14 @@ export default class P2P<T extends Packable>
                 }
             }
 
-            this.on(EventNames.lobbyConnect, () => {
+            this.on(Event.lobbyConnect, () => {
                 handle = setTimeout(() => {
                     if (this.isLobby && this.allRooms.has(this.id) && this.allRooms.get(this.id)!.size == 0)
                         this.disconnect()
                 }, maxIdleTime)
             })
-            this.on(EventNames.disconnected, stopIdleCountdown)
-            this.on(EventNames.peerConnect, stopIdleCountdown)
+            this.on(Event.disconnected, stopIdleCountdown)
+            this.on(Event.peerConnect, stopIdleCountdown)
         }
     }
 
@@ -201,7 +138,7 @@ export default class P2P<T extends Packable>
                 await this.ipfs.start()
                 this.id = (await this.ipfs.id()).id
                 this.status = ConnectionStatus.ONLINE
-                this.emit(EventNames.connected)
+                this.emit(Event.connected)
             } catch(e) { this.error(e) }
     }
 
@@ -218,7 +155,7 @@ export default class P2P<T extends Packable>
             } catch(e) {
                 this.error(e)
             } finally {
-                this.emit(EventNames.disconnected)
+                this.emit(Event.disconnected)
                 this.removeAllListeners()
             }
         }
@@ -227,7 +164,7 @@ export default class P2P<T extends Packable>
     async joinLobby() {
         // Join my own room to check for people who wanna join me.
         await this.joinRooms(this.LOBBY_ID, this.id)
-        this.emit(EventNames.lobbyConnect)
+        this.emit(Event.lobbyConnect)
     }
 
     async joinPeer(peer: PeerID) {
@@ -241,7 +178,7 @@ export default class P2P<T extends Packable>
         }
 
         await this.joinRooms(peer)
-        this.emit(EventNames.peerConnect)
+        this.emit(Event.peerConnect)
     }
 
     async broadcast(data: any) {
@@ -282,7 +219,7 @@ export default class P2P<T extends Packable>
             error = Error(error)
         for(const [prop, value] of Object.entries(extra))
             (error as any)[prop] = value
-        this.emit(EventNames.error, error)
+        this.emit(Event.error, error)
         throw error
     }
 
@@ -310,7 +247,7 @@ export default class P2P<T extends Packable>
 
             this.roomID = mainRoom
             await this.pollPeers(rooms)
-            this.emit(EventNames.roomConnect)
+            this.emit(Event.roomConnect)
         } catch(e) {
             this.error(e)
         } finally {
@@ -364,14 +301,14 @@ export default class P2P<T extends Packable>
                 seedInt(hash)
 
                 this.readyPeers = new Map(this.peers)
-                this.emit(EventNames.roomReady)
+                this.emit(Event.roomReady)
                 break
 
             default:
                 if (!this.isRoomReady)
                     this.error(Errors.UNEXPECTED_MESSAGE, {peer, data: msg})
 
-                this.emit(EventNames.data, {
+                this.emit(Event.data, {
                     data: msg, // name set back to what it was... I know, it's weird
                     peer,
                 })
@@ -379,16 +316,16 @@ export default class P2P<T extends Packable>
     }
 
     private emitPeerUpdate(peer: PeerID, room: RoomID, joined: boolean) {
-        this.emit(joined ? EventNames.peerJoin : EventNames.peerLeft, peer)
-        this.emit(EventNames.peerChange, {peer, joined})
+        this.emit(joined ? Event.peerJoin : Event.peerLeft, peer)
+        this.emit(Event.peerChange, {peer, joined})
 
         if (room == this.LOBBY_ID) {
-            this.emit(joined ? EventNames.lobbyJoin : EventNames.lobbyLeft, peer)
-            this.emit(EventNames.lobbyChange, {peer, joined})
+            this.emit(joined ? Event.lobbyJoin : Event.lobbyLeft, peer)
+            this.emit(Event.lobbyChange, {peer, joined})
 
         } else if (room == this.id) {
-            this.emit(joined ? EventNames.meJoin : EventNames.meLeft, peer)
-            this.emit(EventNames.meChange, {peer, joined})
+            this.emit(joined ? Event.meJoin : Event.meLeft, peer)
+            this.emit(Event.meChange, {peer, joined})
         }
     }
 

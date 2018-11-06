@@ -1,8 +1,6 @@
 import {PeerID} from 'ipfs'
-import P2P, {EventNames} from '../..'
+import P2P, {Events} from '../..'
 import {P2Popts} from '../../src/P2P'
-
-export {EventNames}
 
 const RUN_TIME = Date.now()
 let total = 0
@@ -48,8 +46,8 @@ class MockP2P extends P2P<string> {
 
 /** A P2P Lobby with defaults to communicate to other nodes within the same client. */
 export default function createNode(args?: Partial<P2Popts>): MockP2P {
-    const p2p = new MockP2P(args)
-    p2p.on(EventNames.error, (e: Error) => {throw e})
-    peers.add(p2p)
-    return p2p
+    const node = new MockP2P(args)
+    node.on(Events.error, (e: Error) => {throw e})
+    peers.add(node)
+    return node
 }

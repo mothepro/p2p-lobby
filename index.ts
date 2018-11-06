@@ -1,9 +1,11 @@
-import P2P, {Errors, EventNames} from './src/P2P'
-import register from './src/packer'
+import P2P from './src/P2P'
+import Packer from './src/packer'
+import Events from './src/events'
+import Errors from './src/errors'
 
 export default P2P
 export {
-    EventNames,
+    Events,
     Errors,
-    register as Packer,
+    Packer,
 }

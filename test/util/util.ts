@@ -1,20 +1,20 @@
-import createNode, {EventNames} from './LocalP2P'
-import {Events} from '../../src/P2P'
+import createNode from './LocalP2P'
+import Events, { EventMap } from '../../src/events'
 
 type MockP2P = ReturnType<typeof createNode>
-type NodeEventPair = [MockP2P, EventNames]
+type NodeEventPair = [MockP2P, Events]
 
 const listeners: Map<NodeEventPair, Function> = new Map
 
 // TODO: DRYer approach
 export async function forEvent(
     node: MockP2P,
-    event: EventNames, 
+    event: Events, 
     times = 1
-): Promise<Events[typeof event][]> {
+): Promise<EventMap[typeof event][]> {
     let resolver: Function
     let attempts = times
-    const ret: Events[typeof event][] = []
+    const ret: EventMap[typeof event][] = []
     const pair: NodeEventPair = [node, event]
 
     if(listeners.has(pair)) { // Remove completed forEvent's so the overflow error isn't called.
@@ -41,13 +41,13 @@ export async function forEvent(
 
 export async function forEventValue(
   node: MockP2P,
-  event: EventNames,
-  value: Events[typeof event],
+  event: Events,
+  value: EventMap[typeof event],
   times = 1,
-): Promise<Events[typeof event][]> {
+): Promise<EventMap[typeof event][]> {
     let resolver: Function
     let attempts = times
-    const ret: Events[typeof event][] = []
+    const ret: EventMap[typeof event][] = []
 
     function waiter(arg: any) {
         if(arg === value) {

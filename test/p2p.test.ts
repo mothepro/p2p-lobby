@@ -1,8 +1,8 @@
 import 'mocha'
 import 'should'
-import createNode, {EventNames, MockP2Popts} from './util/LocalP2P'
-import {delay, forEvent, forEventValue} from './util/util'
-import {Errors, P2Popts} from '../src/P2P'
+import createNode, { MockP2Popts } from './util/LocalP2P'
+import { delay, forEvent, forEventValue } from './util/util'
+import { Errors, Events } from '..'
 
 type MockP2P = ReturnType<typeof createNode>
 
@@ -34,9 +34,9 @@ describe('Basic P2P Nodes', function () {
         node2 = createNode(options)
         node3 = createNode(options)
     
-        node1.on(EventNames.disconnected, () => console.log(`${node1.name} is diconnected. (${node1.getID()})`))
-        node2.on(EventNames.disconnected, () => console.log(`${node2.name} is diconnected. (${node2.getID()})`))
-        node3.on(EventNames.disconnected, () => console.log(`${node3.name} is diconnected. (${node3.getID()})`))
+        node1.on(Events.disconnected, () => console.log(`${node1.name} is diconnected. (${node1.getID()})`))
+        node2.on(Events.disconnected, () => console.log(`${node2.name} is diconnected. (${node2.getID()})`))
+        node3.on(Events.disconnected, () => console.log(`${node3.name} is diconnected. (${node3.getID()})`))
     
         return Promise.all([
             node1.connect(),
@@ -63,7 +63,7 @@ describe('Basic P2P Nodes', function () {
     })
     
     it('Should block a second connection', async () => {
-        forEvent(node1, EventNames.error).should.be.fulfilledWith(Errors.SYNC_JOIN)
+        forEvent(node1, Events.error).should.be.fulfilledWith(Errors.SYNC_JOIN)
 
         return Promise.all([
             node1.joinLobby(),
@@ -83,7 +83,7 @@ describe('Basic P2P Nodes', function () {
             node1.isConnected.should.be.true()
 
             await Promise.all([
-                forEvent(node1, EventNames.disconnected),
+                forEvent(node1, Events.disconnected),
                 delay(IDLE_TIME),
             ])
             node1.isConnected.should.be.false()
@@ -102,8 +102,8 @@ describe('Basic P2P Nodes', function () {
 
         it('2 Nodes Join', async () => {
             const [[id2], [id1]] = await Promise.all([
-                forEvent(node1, EventNames.peerJoin),
-                forEvent(node2, EventNames.peerJoin),
+                forEvent(node1, Events.peerJoin),
+                forEvent(node2, Events.peerJoin),
 
                 node1.joinLobby(),
                 node2.joinLobby(),
@@ -114,10 +114,10 @@ describe('Basic P2P Nodes', function () {
         })
 
         it('Many Nodes Join', async () => {
-            node1.on(EventNames.peerLeft, () => {throw Error('No peers should be leaving')})
+            node1.on(Events.peerLeft, () => {throw Error('No peers should be leaving')})
 
             const [node1peerIDs] = await Promise.all([
-                forEvent(node1, EventNames.peerJoin, 2),
+                forEvent(node1, Events.peerJoin, 2),
 
                 node1.joinLobby(),
                 node2.joinLobby(),
@@ -139,9 +139,9 @@ describe('Basic P2P Nodes', function () {
             this.timeout(20 * 1000)
 
             await Promise.all([
-                forEvent(node1, EventNames.peerJoin, 2),
-                forEvent(node2, EventNames.peerJoin, 2),
-                forEvent(node3, EventNames.peerJoin, 2),
+                forEvent(node1, Events.peerJoin, 2),
+                forEvent(node2, Events.peerJoin, 2),
+                forEvent(node3, Events.peerJoin, 2),
 
                 node1.joinLobby(),
                 node2.joinLobby(),
@@ -149,8 +149,8 @@ describe('Basic P2P Nodes', function () {
             ])
 
             await Promise.all([
-                forEventValue(node1, EventNames.lobbyLeft, node3.getID()),
-                forEventValue(node2, EventNames.lobbyLeft, node3.getID()),
+                forEventValue(node1, Events.lobbyLeft, node3.getID()),
+                forEventValue(node2, Events.lobbyLeft, node3.getID()),
                 node3.disconnect(),
             ])
         })
@@ -171,17 +171,17 @@ describe('Basic P2P Nodes', function () {
             // this.timeout(120 * 1000)
 
             return Promise.all([
-                forEvent(node1, EventNames.lobbyJoin),
-                forEvent(node2, EventNames.lobbyJoin),
+                forEvent(node1, Events.lobbyJoin),
+                forEvent(node2, Events.lobbyJoin),
 
                 node1.joinLobby(),
                 node2.joinLobby(),
             ])
             .then(() => console.log('2 Nodes are in Lobby'))
             .then(() => Promise.all([
-                forEvent(node1, EventNames.meJoin, 2),   // Wait for other peers to join node1
-                forEvent(node2, EventNames.peerJoin, 2), // All peers need to know each other
-                forEvent(node3, EventNames.peerJoin, 2),
+                forEvent(node1, Events.meJoin, 2),   // Wait for other peers to join node1
+                forEvent(node2, Events.peerJoin, 2), // All peers need to know each other
+                forEvent(node3, Events.peerJoin, 2),
 
                 node2.joinPeer(node1.getID()),
                 node3.joinPeer(node1.getID()), // join directly
@@ -190,9 +190,9 @@ describe('Basic P2P Nodes', function () {
             .then(() => {
                 // Just set a broader scoped var, don't wait for anything
                 allReady = Promise.all([
-                    forEvent(node1, EventNames.roomReady),
-                    forEvent(node2, EventNames.roomReady),
-                    forEvent(node3, EventNames.roomReady),
+                    forEvent(node1, Events.roomReady),
+                    forEvent(node2, Events.roomReady),
+                    forEvent(node3, Events.roomReady),
                 ])
                 console.log('`node2` & `node3` are connected to `node1`\'s room')
             })
@@ -222,7 +222,7 @@ describe('Basic P2P Nodes', function () {
             await allReady
 
             const [[msg1, msg2]] = await Promise.all([
-                forEvent(node3, EventNames.data, 2),
+                forEvent(node3, Events.data, 2),
 
                 node2.broadcast('hello all'),
                 node1.broadcast('what\'s up peers'),
@@ -240,7 +240,7 @@ describe('Basic P2P Nodes', function () {
             ]
 
             if(typeof msg1 == 'undefined' || typeof msg2 == 'undefined')
-                throw Error('Nothing was emitted with `node3.on(EventNames.data, void)`')
+                throw Error('Nothing was emitted with `node3.on(Events.data, void)`')
 
             msg1.should.be.oneOf(msgs)
             msg2.should.be.oneOf(msgs)
