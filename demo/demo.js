@@ -36,38 +36,10 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
-var __values = (this && this.__values) || function (o) {
-    var m = typeof Symbol === "function" && o[Symbol.iterator], i = 0;
-    if (m) return m.call(o);
-    return {
-        next: function () {
-            if (o && i >= o.length) o = void 0;
-            return { value: o && o[i++], done: !o };
-        }
-    };
-};
-var __read = (this && this.__read) || function (o, n) {
-    var m = typeof Symbol === "function" && o[Symbol.iterator];
-    if (!m) return o;
-    var i = m.call(o), r, ar = [], e;
-    try {
-        while ((n === void 0 || n-- > 0) && !(r = i.next()).done) ar.push(r.value);
-    }
-    catch (error) { e = { error: error }; }
-    finally {
-        try {
-            if (r && !r.done && (m = i["return"])) m.call(i);
-        }
-        finally { if (e) throw e.error; }
-    }
-    return ar;
-};
-var _this = this;
 Object.defineProperty(exports, "__esModule", { value: true });
 var __1 = (typeof window !== "undefined" ? window['p2p'] : typeof global !== "undefined" ? global['p2p'] : null);
-var lobbyConnect_1 = require("./src/lobbyConnect");
-var myRoomConnect_1 = require("./src/myRoomConnect");
 var package_json_1 = require("../package.json");
+var bindNode_1 = require("./src/bindNode");
 var log_1 = require("./src/log");
 var messages_1 = require("./src/messages");
 var util_1 = require("./src/util");
@@ -94,45 +66,22 @@ rejoinBtn.addEventListener('click', function (e) {
     joinLobby();
 });
 // Sending a message
-var chatbox = document.getElementById('chatbox'), chatForm = document.getElementById('chatForm'), dataInput = document.getElementById('data');
-chatForm.addEventListener('submit', function (e) { return __awaiter(_this, void 0, void 0, function () {
-    return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0:
-                e.preventDefault();
-                log_1.default('Attempting to broadcast:', util_1.htmlSafe(dataInput.value.trim()));
-                return [4 /*yield*/, node.broadcast(dataInput.value.trim())];
-            case 1:
-                _a.sent();
-                dataInput.value = '';
-                return [2 /*return*/];
-        }
-    });
-}); });
+var chatForm = document.getElementById('chatForm'), dataInput = document.getElementById('data');
+chatForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    log_1.default('Attempting to broadcast:', util_1.htmlSafe(dataInput.value.trim()));
+    dataInput.value = '';
+    node.broadcast(dataInput.value.trim());
+});
 // Click Request Random Int
 var randInt = document.getElementById('randInt');
-randInt.addEventListener('click', function () { return __awaiter(_this, void 0, void 0, function () { return __generator(this, function (_a) {
-    switch (_a.label) {
-        case 0: return [4 /*yield*/, node.broadcast(new messages_1.RandomRequest(true))];
-        case 1: return [2 /*return*/, _a.sent()];
-    }
-}); }); });
+randInt.addEventListener('click', function () { return node.broadcast(new messages_1.RandomRequest(true)); });
 // Click Request Random Float
 var randFloat = document.getElementById('randFloat');
-randFloat.addEventListener('click', function () { return __awaiter(_this, void 0, void 0, function () { return __generator(this, function (_a) {
-    switch (_a.label) {
-        case 0: return [4 /*yield*/, node.broadcast(new messages_1.RandomRequest(false))];
-        case 1: return [2 /*return*/, _a.sent()];
-    }
-}); }); });
+randFloat.addEventListener('click', function () { return node.broadcast(new messages_1.RandomRequest(false)); });
 // Click disconnect
 var disconnect = document.getElementById('disconnect');
-disconnect.addEventListener('click', function () { return __awaiter(_this, void 0, void 0, function () { return __generator(this, function (_a) {
-    switch (_a.label) {
-        case 0: return [4 /*yield*/, node.disconnect()];
-        case 1: return [2 /*return*/, _a.sent()];
-    }
-}); }); });
+disconnect.addEventListener('click', function () { return node.disconnect(); });
 /** Connects the node to the lobby */
 function joinLobby() {
     return __awaiter(this, void 0, void 0, function () {
@@ -141,7 +90,7 @@ function joinLobby() {
                 case 0:
                     if (!node) return [3 /*break*/, 2];
                     log_1.default('Joining Lobby');
-                    bindNode(node);
+                    bindNode_1.default(node);
                     return [4 /*yield*/, node.joinLobby()];
                 case 1:
                     _a.sent();
@@ -155,8 +104,46 @@ function joinLobby() {
         });
     });
 }
+log_1.default('All entries are logged here');
+
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+
+},{"../package.json":8,"./src/bindNode":2,"./src/log":4,"./src/messages":5,"./src/util":7}],2:[function(require,module,exports){
+"use strict";
+var __values = (this && this.__values) || function (o) {
+    var m = typeof Symbol === "function" && o[Symbol.iterator], i = 0;
+    if (m) return m.call(o);
+    return {
+        next: function () {
+            if (o && i >= o.length) o = void 0;
+            return { value: o && o[i++], done: !o };
+        }
+    };
+};
+var __read = (this && this.__read) || function (o, n) {
+    var m = typeof Symbol === "function" && o[Symbol.iterator];
+    if (!m) return o;
+    var i = m.call(o), r, ar = [], e;
+    try {
+        while ((n === void 0 || n-- > 0) && !(r = i.next()).done) ar.push(r.value);
+    }
+    catch (error) { e = { error: error }; }
+    finally {
+        try {
+            if (r && !r.done && (m = i["return"])) m.call(i);
+        }
+        finally { if (e) throw e.error; }
+    }
+    return ar;
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+var lobbyConnect_1 = require("./lobbyConnect");
+var myRoomConnect_1 = require("./myRoomConnect");
+var log_1 = require("./log");
+var messages_1 = require("./messages");
+var util_1 = require("./util");
+var myPeerList = document.getElementById('my-peers'), lobbyPeerList = document.getElementById('lobby-peers'), chatbox = document.getElementById('chatbox'), rejoinBtn = document.getElementById('rejoin');
 /** binds the events for the node */
-var myPeerList = document.getElementById('my-peers'), lobbyPeerList = document.getElementById('lobby-peers');
 function bindNode(node) {
     node.on(0 /* error */, log_1.default);
     node.on(1 /* connected */, function () { return log_1.default('Node connected'); });
@@ -217,11 +204,9 @@ function bindNode(node) {
         }
     });
 }
-log_1.default('All entries are logged here');
+exports.default = bindNode;
 
-}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-
-},{"../package.json":7,"./src/lobbyConnect":2,"./src/log":3,"./src/messages":4,"./src/myRoomConnect":5,"./src/util":6}],2:[function(require,module,exports){
+},{"./lobbyConnect":3,"./log":4,"./messages":5,"./myRoomConnect":6,"./util":7}],3:[function(require,module,exports){
 "use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -312,7 +297,7 @@ function lobbyConnect(node, _a) {
 }
 exports.default = lobbyConnect;
 
-},{"./log":3,"./myRoomConnect":5,"./util":6}],3:[function(require,module,exports){
+},{"./log":4,"./myRoomConnect":6,"./util":7}],4:[function(require,module,exports){
 "use strict";
 var __assign = (this && this.__assign) || function () {
     __assign = Object.assign || function(t) {
@@ -382,7 +367,7 @@ function log() {
 }
 exports.default = log;
 
-},{}],4:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 (function (global){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
@@ -402,7 +387,7 @@ __1.Packer(RandomRequest);
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{}],5:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 "use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -498,7 +483,7 @@ function myRoomConnect(node, _a) {
 }
 exports.default = myRoomConnect;
 
-},{"./log":3,"./util":6}],6:[function(require,module,exports){
+},{"./log":4,"./util":7}],7:[function(require,module,exports){
 "use strict";
 var __values = (this && this.__values) || function (o) {
     var m = typeof Symbol === "function" && o[Symbol.iterator], i = 0;
@@ -559,7 +544,7 @@ function htmlSafe(str) {
 }
 exports.htmlSafe = htmlSafe;
 
-},{}],7:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 module.exports={
   "name": "p2p-lobby",
   "version": "0.0.13",
