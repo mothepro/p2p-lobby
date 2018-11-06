@@ -547,7 +547,7 @@ exports.htmlSafe = htmlSafe;
 },{}],8:[function(require,module,exports){
 module.exports={
   "name": "p2p-lobby",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "description": "A type safe lobby system built on IPFS",
   "scripts": {
     "build:dev": "simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle",

@@ -23,7 +23,7 @@ export const enum Errors {
     ROOM_NOT_READY      = 'Can not perform this action until the room is ready',
     LIST_MISMATCH       = 'Our list or peers is inconsistent with the peer we joined',
     UNEXPECTED_MESSAGE  = 'An unexpected message was recieved',
-    POLLING             = 'An error was encountered while polling (Usually safe to ignore)',
+    POLLING             = 'An error was encountered while polling peers in a room',
 }
 
 export const enum EventNames {
@@ -225,66 +225,29 @@ export default class P2P<T extends Packable>
     }
 
     async joinLobby() {
-        if (this.joiningRoom)
-            this.error(Errors.SYNC_JOIN)
-        this.joiningRoom = true
-
-        await this.leaveRoom()
-        await this.connect()
-
         // Join my own room to check for people who wanna join me.
-        try {
-            await Promise.all([
-                this.id,
-                this.LOBBY_ID
-            ].map(room => this.ipfs.pubsub.subscribe(room, this.onMessage, {discover: true})))
-
-            this.allRooms
-                .set(this.id, new Set)
-                .set(this.LOBBY_ID, new Set)
-
-            this.roomID = this.LOBBY_ID
-            await this.pollPeers([this.id, this.roomID])
-            this.emit(EventNames.roomConnect)
-            this.emit(EventNames.lobbyConnect)
-        } catch(e) { this.error(e) }
-        finally { this.joiningRoom = false }
+        await this.joinRooms(this.LOBBY_ID, this.id)
+        this.emit(EventNames.lobbyConnect)
     }
 
-    // TODO: Refactor with joinLobby to be more DRY
     async joinPeer(peer: PeerID) {
         if (!peer)
             this.error(Errors.BAD_PEERID)
 
-        if (this.joiningRoom)
-            this.error(Errors.SYNC_JOIN)
-        this.joiningRoom = true
-
-        await this.leaveRoom() // also leave my room
-        await this.connect()
-
-        try {
-            await this.ipfs.pubsub.subscribe(peer, this.onMessage, {discover: true})
-            if (!this.allRooms.has(peer))
-                this.allRooms.set(peer, new Set)
-            this.roomID = peer
-            await this.pollPeers([this.roomID])
-            this.emit(EventNames.roomConnect)
-            this.emit(EventNames.peerConnect)
+        if (this.isLobby) {
+            this.leaveRoom()
+            // be sure to stop tracking my own room as well
+            this.roomID = this.id
         }
-        catch(e) { this.error(e) }
-        finally { this.joiningRoom = false }
+
+        await this.joinRooms(peer)
+        this.emit(EventNames.peerConnect)
     }
 
     async broadcast(data: any) {
         if (!this.isRoomReady)
             this.error(Errors.MUST_BE_IN_ROOM)
-        return this.unsafeBroadcast(data, this.roomID)
-    }
-
-    /** To broadcast to a specific room and without being in a ready room */
-    private async unsafeBroadcast(data: any, room: RoomID) {
-        return this.ipfs.pubsub.publish(room, pack(data) as Buffer).catch(err => this.error(err))
+        return this.broadcastToRoom(data, this.roomID)
     }
 
     async readyUp() {
@@ -299,7 +262,7 @@ export default class P2P<T extends Packable>
 
         await this.leaveRoom()
         this.roomID = this.id
-        await this.unsafeBroadcast(new ReadyUpInfo(this.hashPeerMap()), this.roomID)
+        await this.broadcastToRoom(new ReadyUpInfo(this.hashPeerMap()), this.roomID)
     }
 
     /**
@@ -321,6 +284,38 @@ export default class P2P<T extends Packable>
             (error as any)[prop] = value
         this.emit(EventNames.error, error)
         throw error
+    }
+
+    /** To broadcast to a specific room and without being in a ready room */
+    private async broadcastToRoom(data: any, room: RoomID) {
+        return this.ipfs.pubsub.publish(room, pack(data) as Buffer).catch(err => this.error(err))
+    }
+
+    /** Subscribes to many pubsub rooms and polls against them. */
+    private async joinRooms(mainRoom: RoomID, ...rooms: RoomID[]) {
+        if (this.joiningRoom)
+            this.error(Errors.SYNC_JOIN)
+
+        rooms.push(mainRoom)
+
+        this.joiningRoom = true
+        await this.leaveRoom()
+        await this.connect()
+
+        try {
+            await Promise.all(rooms.map(room => this.ipfs.pubsub.subscribe(room, this.onMessage, {discover: true})))
+
+            for(const room of rooms)
+                this.allRooms.set(room, new Set)
+
+            this.roomID = mainRoom
+            await this.pollPeers(rooms)
+            this.emit(EventNames.roomConnect)
+        } catch(e) {
+            this.error(e)
+        } finally {
+            this.joiningRoom = false
+        }
     }
 
     private async leaveRoom() {
@@ -354,7 +349,7 @@ export default class P2P<T extends Packable>
                     // Introduce ourselves if peer we know wants to meet us.
                     // (Otherwise the poller will handle it)
                     if (this.allPeers.has(peer) && infoRequest)
-                        this.unsafeBroadcast(new Introduction(this.name), room)
+                        this.broadcastToRoom(new Introduction(this.name), room)
                 }
                 break
 
@@ -376,9 +371,9 @@ export default class P2P<T extends Packable>
                 if (!this.isRoomReady)
                     this.error(Errors.UNEXPECTED_MESSAGE, {peer, data: msg})
 
-                this.emit(EventNames.data, { // var names are set back to what they were... I know, it's weird
-                    data: msg,
-                    peer: from.toString(),
+                this.emit(EventNames.data, {
+                    data: msg, // name set back to what it was... I know, it's weird
+                    peer,
                 })
         }
     }
@@ -405,7 +400,8 @@ export default class P2P<T extends Packable>
 
         for (const room of rooms.filter(room => this.allRooms.has(room))) {
             try {
-                let missingPeerName = false
+                let missingPeerName = false,
+                    keepPollingRoom = true
                 const currentPeers = this.allRooms.get(room)!
                 const updatedPeerList = await this.ipfs.pubsub.peers(room).catch(this.error)
 
@@ -435,17 +431,21 @@ export default class P2P<T extends Packable>
 
                     currentPeers.delete(peer)
                     
-                    if (room == peer) // the host left, go back to the lobby since it will never be ready
-                        await this.joinLobby()
+                    if (room == peer) { // the host left, go back to the lobby since it will never be ready
+                        keepPollingRoom = false
+                        this.joinLobby()
+                    }
                 }
+                
+                if (keepPollingRoom) {
+                    // Introduce myself to everyone so everyone else will as well.
+                    if (missingPeerName && room == this.roomID)
+                        await this.broadcastToRoom(new Introduction(this.name, true), room)
 
-                // Introduce myself to everyone so everyone else will as well.
-                if (missingPeerName && room == this.roomID)
-                    await this.unsafeBroadcast(new Introduction(this.name, true), room)
-
-                roomsToWatch.push(room) // only continue watching if error free
+                    roomsToWatch.push(room)
+                }
             } catch(originalError) { 
-                this.error(Errors.POLLING, {originalError})
+                this.error(Errors.POLLING, {originalError, room})
             }
         }
 

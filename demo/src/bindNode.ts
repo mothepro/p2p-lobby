@@ -1,10 +1,10 @@
 import P2P, {EventNames} from '../..'
 import lobbyConnect from './lobbyConnect'
 import myRoomConnect from './myRoomConnect'
-import {PeerID} from 'ipfs'
 import log from './log'
 import { RandomRequest } from './messages'
 import { htmlSafe } from './util'
+import { PeerID } from 'ipfs'
 
 const myPeerList    = document.getElementById('my-peers')! as HTMLUListElement,
       lobbyPeerList = document.getElementById('lobby-peers')! as HTMLUListElement,
@@ -59,8 +59,10 @@ export default function bindNode(node: P2P<string>) {
 
         if (data instanceof RandomRequest)
             log(peerName, 'made the random number', node.random(data.isInt))
+
         else if (typeof data == 'string')
             log(peerName, 'says', htmlSafe(data))
+
         else {
             const err = Error('A peer has sent some unexpected data');
             (err as any).peerID = peer;

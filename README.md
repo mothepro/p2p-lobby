@@ -9,7 +9,7 @@ $ npm i p2p-lobby
 ### Use in the browser
 Bundle with browserify
 ```bash
-$ npm run build
+$ npm run build:dev
 ```
 
 or use the CDN
@@ -17,7 +17,7 @@ or use the CDN
 <!-- Development Build ~9MB -->
 <script src="https://unpkg.com/p2p-lobby/dist/bundle.js"></script>
 
-<!-- Production Build ~2.8MB :'( -->
+<!-- Production Build ~1.3MB :'( -->
 <script src="https://unpkg.com/p2p-lobby/dist/bundle.min.js"></script>
 ```
 Everything will be exposed under the global variable `p2p`.

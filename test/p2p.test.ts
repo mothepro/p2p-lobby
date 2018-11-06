@@ -134,7 +134,7 @@ describe('Basic P2P Nodes', function () {
         })
 
         // Flaky: It seems that ipfs.peers doesn't always update when someone leaves.
-        it('Node Leaving', async function () {
+        it.skip('Node Leaving', async function () {
             this.retries(2)
             this.timeout(20 * 1000)
 
