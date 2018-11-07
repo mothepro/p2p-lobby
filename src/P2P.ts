@@ -145,6 +145,8 @@ export default class P2P<T extends Packable>
     async disconnect() {
         if(this.isConnected) {
             this.status = ConnectionStatus.DISCONNECTING
+            // Leave rooms manually since ipfs.stop doesn't disconnect us.
+            await Promise.all([...this.allRooms.keys()].map(room => this.ipfs.pubsub.unsubscribe(room, this.onMessage)))
             this.allRooms.clear()
             this.allPeers.clear()
             delete this.readyPeers
@@ -390,7 +392,7 @@ export default class P2P<T extends Packable>
             setTimeout(() => this.pollPeers(roomsToWatch), this.pollInterval)
     }
 
-    /**
+    /**ç
      * Generates a number based on the peers connected to the current room.
      * Meaning this value should be consistent with all other peers as well.
      */

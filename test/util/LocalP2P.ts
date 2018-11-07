@@ -47,7 +47,6 @@ class MockP2P extends P2P<string> {
 /** A P2P Lobby with defaults to communicate to other nodes within the same client. */
 export default function createNode(args?: Partial<P2Popts>): MockP2P {
     const node = new MockP2P(args)
-    node.on(Events.error, (e: Error) => {throw e})
     peers.add(node)
     return node
 }

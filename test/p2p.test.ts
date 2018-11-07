@@ -1,7 +1,7 @@
 import 'mocha'
 import 'should'
 import createNode, { MockP2Popts } from './util/LocalP2P'
-import { delay, forEvent, forEventValue } from './util/util'
+import { delay, forEvent, forEventWithValue } from './util/util'
 import { Errors, Events } from '..'
 
 type MockP2P = ReturnType<typeof createNode>
@@ -34,9 +34,10 @@ describe('Basic P2P Nodes', function () {
         node2 = createNode(options)
         node3 = createNode(options)
     
-        node1.on(Events.disconnected, () => console.log(`${node1.name} is diconnected. (${node1.getID()})`))
-        node2.on(Events.disconnected, () => console.log(`${node2.name} is diconnected. (${node2.getID()})`))
-        node3.on(Events.disconnected, () => console.log(`${node3.name} is diconnected. (${node3.getID()})`))
+        for(const node of [node1, node2, node3]) {
+            node.on(Events.disconnected, () => console.log(`${node.name} is diconnected. (${node.getID()})`))
+            node.on(Events.error, (e: Error) => { throw e })
+        }
     
         return Promise.all([
             node1.connect(),
@@ -133,8 +134,7 @@ describe('Basic P2P Nodes', function () {
             ]))
         })
 
-        // Flaky: It seems that ipfs.peers doesn't always update when someone leaves.
-        it.skip('Node Leaving', async function () {
+        it('Node Leaving', async function () {
             this.retries(2)
             this.timeout(20 * 1000)
 
@@ -149,8 +149,8 @@ describe('Basic P2P Nodes', function () {
             ])
 
             await Promise.all([
-                forEventValue(node1, Events.lobbyLeft, node3.getID()),
-                forEventValue(node2, Events.lobbyLeft, node3.getID()),
+                forEventWithValue(node1, Events.lobbyLeft, node3.getID()),
+                forEventWithValue(node2, Events.lobbyLeft, node3.getID()),
                 node3.disconnect(),
             ])
         })
@@ -244,6 +244,24 @@ describe('Basic P2P Nodes', function () {
 
             msg1.should.be.oneOf(msgs)
             msg2.should.be.oneOf(msgs)
+        })
+
+        it('kick all peers out when host leaves', async () => {
+            await node1.readyUp()
+            await allReady
+
+            node1.isHost.should.be.true()
+            node2.isRoomReady.should.be.true()
+            node2.isLobby.should.be.false()
+
+            await Promise.all([
+                forEvent(node2, Events.lobbyConnect),
+                node1.disconnect(),
+            ])
+
+            node1.isHost.should.be.false()
+            node2.isRoomReady.should.be.false()
+            node2.isLobby.should.be.true()
         })
     })
 })
