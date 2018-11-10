@@ -1,6 +1,6 @@
 {
   "name": "p2p-lobby",
-  "version": "0.0.14",
+  "version": "0.0.15",
   "description": "A type safe lobby system built on IPFS",
   "main": "index.ts",
   "scripts": {
