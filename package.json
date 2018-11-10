@@ -2,20 +2,22 @@
   "name": "p2p-lobby",
   "version": "0.0.14",
   "description": "A type safe lobby system built on IPFS",
+  "main": "index.ts",
   "scripts": {
-    "build:dev": "simplifyify index.ts -s p2p -o dist/bundle.js --debug --bundle",
-    "build:prod": "simplifyify index.ts -s p2p -o dist/bundle.min.js --minify",
-    "build:demo": "simplifyify demo/demo.ts -o demo/demo.js --debug --bundle",
+    "build:dev": "simplifyify index.ts -s p2p -o dist/umd/bundle.js --debug --bundle",
+    "build:prod": "simplifyify index.ts -s p2p -o dist/umd/bundle.min.js --minify",
+    "build:demo": "simplifyify demo/demo.ts -o dist/umd/demo.bundle.js --debug --bundle",
     "build": "npm run build:dev && npm run build:prod && npm run build:demo",
     "mocha": "TS_NODE_COMPILER_OPTIONS='{\"preserveConstEnums\": true}' npm run mocha:test",
     "mocha:test": "mocha --exit --require ts-node/register/transpile-only --timeout 180000 test/*.test.ts",
     "test": "tsc --noEmit && npm run mocha",
     "coverage": "nyc -r html -r text-summary -n src/**/*.ts -e .ts npm run mocha",
-    "prerelease": "tsc && rimraf dist/package.json && npm run build",
+    "prerelease": "tsc && npm run build",
     "release": "np"
   },
   "files": [
-    "dist/"
+    "dist/",
+    "src/"
   ],
   "dependencies": {
     "ipfs": "^0.32.3",
@@ -33,7 +35,6 @@
     "mocha": "^5.2.0",
     "np": "^3.0.4",
     "nyc": "^13.1.0",
-    "rimraf": "^2.6.2",
     "should": "^13.2.3",
     "simplifyify": "^7.0.0",
     "strict-event-emitter-types": "^2.0.0",

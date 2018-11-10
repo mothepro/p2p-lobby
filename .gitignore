@@ -1,6 +1,7 @@
 .idea
 node_modules
 dist
+umd
 test-data
 package-lock.json
 npm-debug.log

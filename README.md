@@ -15,10 +15,10 @@ $ npm run build:dev
 or use the CDN
 ```html
 <!-- Development Build ~9MB -->
-<script src="https://unpkg.com/p2p-lobby/dist/bundle.js"></script>
+<script src="https://unpkg.com/p2p-lobby/umd/bundle.js"></script>
 
 <!-- Production Build ~1.3MB :'( -->
-<script src="https://unpkg.com/p2p-lobby/dist/bundle.min.js"></script>
+<script src="https://unpkg.com/p2p-lobby/umd/bundle.min.js"></script>
 ```
 Everything will be exposed under the global variable `p2p`.
 
