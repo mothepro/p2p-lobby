@@ -12,12 +12,13 @@
     "mocha:test": "mocha --exit --require ts-node/register/transpile-only --timeout 180000 test/*.test.ts",
     "test": "tsc --noEmit && npm run mocha",
     "coverage": "nyc -r html -r text-summary -n src/**/*.ts -e .ts npm run mocha",
-    "prerelease": "tsc && npm run build",
+    "prerelease": "tsc && rimraf dist/package.json && npm run build",
     "release": "np"
   },
   "files": [
-    "dist/",
-    "src/"
+    "dist",
+    "src",
+    "@types"
   ],
   "dependencies": {
     "ipfs": "^0.32.3",
@@ -35,6 +36,7 @@
     "mocha": "^5.2.0",
     "np": "^3.0.4",
     "nyc": "^13.1.0",
+    "rimraf": "^2.6.2",
     "should": "^13.2.3",
     "simplifyify": "^7.0.0",
     "strict-event-emitter-types": "^2.0.0",

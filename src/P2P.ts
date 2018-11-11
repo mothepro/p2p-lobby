@@ -91,7 +91,7 @@ export default class P2P<T extends Packable>
                 handle = setTimeout(() => {
                     if (this.isLobby && this.allRooms.has(this.id) && this.allRooms.get(this.id)!.size == 0)
                         this.disconnect()
-                }, maxIdleTime)
+                }, maxIdleTime) as unknown as NodeJS.Timeout
             })
             this.on(Event.disconnected, stopIdleCountdown)
             this.on(Event.peerConnect, stopIdleCountdown)
@@ -227,7 +227,8 @@ export default class P2P<T extends Packable>
 
     /** To broadcast to a specific room and without being in a ready room */
     private async broadcastToRoom(data: any, room: RoomID) {
-        return this.ipfs.pubsub.publish(room, pack(data) as Buffer).catch(err => this.error(err))
+        return this.ipfs.pubsub.publish(room, pack(data) as Buffer)
+            .catch((err: Error) => this.error(err))
     }
 
     /** Subscribes to many pubsub rooms and polls against them. */
