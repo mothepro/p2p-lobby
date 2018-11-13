@@ -2,7 +2,7 @@
   "name": "p2p-lobby",
   "version": "0.0.16",
   "description": "A type safe lobby system built on IPFS",
-  "main": "index.ts",
+  "main": "dist/index.js",
   "scripts": {
     "build:dev": "simplifyify index.ts -s p2p -o dist/umd/bundle.js --debug --bundle",
     "build:prod": "simplifyify index.ts -s p2p -o dist/umd/bundle.min.js --minify",
@@ -15,11 +15,8 @@
     "prerelease": "tsc && rimraf dist/package.json && npm run build",
     "release": "np"
   },
-  "files": [
-    "dist",
-    "src",
-    "@types"
-  ],
+  "unpkg": "dist/umd/bundle.min.js",
+  "files": [ "dist" ],
   "dependencies": {
     "ipfs": "^0.32.3",
     "ipfs-repo": "^0.24.0",

@@ -1,3 +1,6 @@
+/// <reference path="./types/ipfs.d.ts" />
+/// <reference path="./types/ipfs-repo.d.ts" />
+
 import * as Ipfs from 'ipfs'
 import {Message, PeerID} from 'ipfs'
 import StrictEventEmitter from 'strict-event-emitter-types'
