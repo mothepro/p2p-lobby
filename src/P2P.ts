@@ -33,7 +33,7 @@ export default class P2P<T extends Packable>
     private readyPeers?: Map<PeerID, T>
 
     private status: ConnectionStatus = ConnectionStatus.OFFLINE
-    private roomID: string = ''
+    private roomID: RoomID = ''
     private id: PeerID = ''
 
     private readonly pollInterval: number
@@ -102,16 +102,18 @@ export default class P2P<T extends Packable>
         return this.status == ConnectionStatus.ONLINE
     }
 
+    /** Peers in the current room */
     get peers(): Map<PeerID, T> {
         if (this.isRoomReady) // faster than spread
             return new Map(this.readyPeers as unknown as [PeerID, T][])
-
-        const peers = new Map
-        if(this.allRooms.has(this.roomID))
-            for(const peerId of this.allRooms.get(this.roomID)!)
-                peers.set(peerId, this.allPeers.get(peerId))
-        return peers
+        return this.peersInRoom(this.roomID)
     }
+
+    /** Peers in the lobby */
+    get lobbyPeers(): Map<PeerID, T> { return this.peersInRoom(this.LOBBY_ID) }
+
+    /** Peers in my room */
+    get myPeers(): Map<PeerID, T> { return this.peersInRoom(this.id) }
 
     get isHost(): boolean {
         return this.roomID == this.id
@@ -411,5 +413,13 @@ export default class P2P<T extends Packable>
             allIdHash %= 0xFFFFFFFF
         }
         return allIdHash - 0x7FFFFFFF
+    }
+
+    private peersInRoom(room: RoomID) {
+        const peers = new Map
+        if(this.allRooms.has(room))
+            for(const peerId of this.allRooms.get(room)!)
+                peers.set(peerId, this.allPeers.get(peerId))
+        return peers
     }
 }
