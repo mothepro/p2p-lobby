@@ -2,7 +2,8 @@ import 'mocha'
 import 'should'
 import createNode, { MockP2Popts } from './util/LocalP2P'
 import { delay, forEvent, forEventWithValue } from './util/util'
-import { Errors, Events } from '..'
+import Errors from '../src/errors'
+import Events from '../src/events'
 
 type MockP2P = ReturnType<typeof createNode>
 

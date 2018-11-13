@@ -88,7 +88,7 @@ describe('Packer', () => {
             new Map([['yes', 'no']]))
 
         const buffer = pack(data)
-        Buffer.isBuffer(buffer)
+        Buffer.isBuffer(buffer).should.be.true()
         buffer.length.should.lessThan(JSON.stringify(data).length)
 
         const actual: Data = unpack(buffer)
