@@ -36,8 +36,8 @@ describe('Basic P2P Nodes', function () {
         node3 = createNode(options)
     
         for(const node of [node1, node2, node3]) {
-            node.on(Events.disconnected, () => console.log(`${node.name} is diconnected. (${node.getID()})`))
-            node.on(Events.error, (e: Error) => { throw e })
+            node.on(Events.disconnected as any, () => console.log(`${node.name} is diconnected. (${node.getID()})`))
+            node.on(Events.error as any, (e: Error) => { throw e })
         }
     
         return Promise.all([
@@ -91,8 +91,8 @@ describe('Basic P2P Nodes', function () {
             node1.isConnected.should.be.false()
         })
 
-        it('Leave me with peer', async () => {
-            await node1.joinPeer(node2.getID())
+        it('Leave me in group with peer', async () => {
+            await node1.joinGroup(node2.getID())
             node1.isConnected.should.be.true()
             await delay(IDLE_TIME * 2)
             node1.isConnected.should.be.true()
@@ -104,8 +104,8 @@ describe('Basic P2P Nodes', function () {
 
         it('2 Nodes Join', async () => {
             const [[id2], [id1]] = await Promise.all([
-                forEvent(node1, Events.peerJoin),
-                forEvent(node2, Events.peerJoin),
+                forEvent(node1, Events.lobbyJoin),
+                forEvent(node2, Events.lobbyJoin),
 
                 node1.joinLobby(),
                 node2.joinLobby(),
@@ -116,10 +116,10 @@ describe('Basic P2P Nodes', function () {
         })
 
         it('Many Nodes Join', async () => {
-            node1.on(Events.peerLeft, () => {throw Error('No peers should be leaving')})
+            node1.on(Events.lobbyLeft as any, () => {throw Error('No peers should be leaving')})
 
             const [node1peerIDs] = await Promise.all([
-                forEvent(node1, Events.peerJoin, 2),
+                forEvent(node1, Events.lobbyJoin, 2),
 
                 node1.joinLobby(),
                 node2.joinLobby(),
@@ -128,11 +128,9 @@ describe('Basic P2P Nodes', function () {
 
             node1peerIDs.should.containEql(node2.getID())
             node1peerIDs.should.containEql(node3.getID())
-             
-            node1.peers.should.eql(new Map([
-                [node2.getID(), node2.name],
-                [node3.getID(), node3.name],
-            ]))
+            
+            node1.getPeerName(node2.getID()).should.eql(node2.name)
+            node1.getPeerName(node3.getID()).should.eql(node3.name)
         })
 
         it('Node Leaving', async function () {
@@ -140,9 +138,9 @@ describe('Basic P2P Nodes', function () {
             this.timeout(20 * 1000)
 
             await Promise.all([
-                forEvent(node1, Events.peerJoin, 2),
-                forEvent(node2, Events.peerJoin, 2),
-                forEvent(node3, Events.peerJoin, 2),
+                forEvent(node1, Events.lobbyJoin, 2),
+                forEvent(node2, Events.lobbyJoin, 2),
+                forEvent(node3, Events.lobbyJoin, 2),
 
                 node1.joinLobby(),
                 node2.joinLobby(),
@@ -156,7 +154,7 @@ describe('Basic P2P Nodes', function () {
             ])
         })
 
-        it('Can\'t send messages in lobby', async () => {
+        it.skip('Can\'t send messages in lobby', async () => {
             await node1.joinLobby()
             return node1.broadcast('hello world').should.rejectedWith(Errors.MUST_BE_IN_ROOM)
         })
@@ -172,34 +170,40 @@ describe('Basic P2P Nodes', function () {
             // this.timeout(120 * 1000)
 
             return Promise.all([
-                forEvent(node1, Events.lobbyJoin),
-                forEvent(node2, Events.lobbyJoin),
+                forEvent(node1, Events.lobbyConnect),
+                forEvent(node2, Events.lobbyConnect),
+                forEvent(node3, Events.lobbyConnect),
+
+                forEvent(node1, Events.lobbyJoin, 2),
+                forEvent(node2, Events.lobbyJoin, 2),
+                forEvent(node3, Events.lobbyJoin, 2),
 
                 node1.joinLobby(),
                 node2.joinLobby(),
+                node3.joinLobby(),
             ])
-            .then(() => console.log('2 Nodes are in Lobby'))
+            .then(() => console.log('All nodes are in lobby and know each other'))
             .then(() => Promise.all([
-                forEvent(node1, Events.meJoin, 2),   // Wait for other peers to join node1
-                forEvent(node2, Events.peerJoin, 2), // All peers need to know each other
-                forEvent(node3, Events.peerJoin, 2),
+                forEvent(node1, Events.groupJoin, 2),
+                forEvent(node2, Events.groupJoin, 2),
+                forEvent(node3, Events.groupJoin, 2),
 
-                node2.joinPeer(node1.getID()),
-                node3.joinPeer(node1.getID()), // join directly
+                node2.joinGroup(node1.getID()),
+                node3.joinGroup(node1.getID()), 
             ]))
             .catch(err => console.log('error', err))
             .then(() => {
                 // Just set a broader scoped var, don't wait for anything
                 allReady = Promise.all([
-                    forEvent(node1, Events.roomReady),
-                    forEvent(node2, Events.roomReady),
-                    forEvent(node3, Events.roomReady),
+                    forEvent(node1, Events.groupReady),
+                    forEvent(node2, Events.groupReady),
+                    forEvent(node3, Events.groupReady),
                 ])
                 console.log('`node2` & `node3` are connected to `node1`\'s room')
             })
         })
 
-        it('Ready up', async () => {
+        it.only('Ready up', async () => {
             await node1.readyUp()
             await allReady
         })
@@ -214,7 +218,7 @@ describe('Basic P2P Nodes', function () {
             node2.getHashPeerMap().should.eql(node3.getHashPeerMap())
         })
 
-        it('Can\'t send messages before ready', async () => {
+        it.skip('Can\'t send messages before ready', async () => {
             return node1.broadcast('hello world').should.rejectedWith(Errors.MUST_BE_IN_ROOM)
         })
 
@@ -245,24 +249,6 @@ describe('Basic P2P Nodes', function () {
 
             msg1.should.be.oneOf(msgs)
             msg2.should.be.oneOf(msgs)
-        })
-
-        it('kick all peers out when host leaves', async () => {
-            await node1.readyUp()
-            await allReady
-
-            node1.isHost.should.be.true()
-            node2.isRoomReady.should.be.true()
-            node2.isLobby.should.be.false()
-
-            await Promise.all([
-                forEvent(node2, Events.lobbyConnect),
-                node1.disconnect(),
-            ])
-
-            node1.isHost.should.be.false()
-            node2.isRoomReady.should.be.false()
-            node2.isLobby.should.be.true()
         })
     })
 })

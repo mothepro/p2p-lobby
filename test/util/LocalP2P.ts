@@ -1,5 +1,5 @@
 import {PeerID} from 'ipfs'
-import P2P, {Events} from '../..'
+import P2P from '../..'
 import {P2Popts} from '../../src/P2P'
 
 const RUN_TIME = Date.now()
@@ -7,13 +7,10 @@ let total = 0
 let peers: Set<MockP2P> = new Set
 
 // Remove default bind to the `beforeunload` event
-interface Global {
-  addEventListener: Function
-}
-declare const global: Global
+declare const global: NodeJS.Global & { addEventListener: Function }
 global.addEventListener = () => {}
 
-export interface MockP2Popts extends P2Popts{
+export interface MockP2Popts extends P2Popts {
     name: string
     pkg: string
 }
