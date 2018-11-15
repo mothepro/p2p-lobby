@@ -74,9 +74,9 @@ describe('Basic P2P Nodes', function () {
     })
 
     describe('Idling', function () {
-        // this.timeout(5 * 1000)
-
         const IDLE_TIME = 100
+        this.timeout(5 * 1000 + 2 * IDLE_TIME)
+
         this.beforeAll(() => options.maxIdleTime = IDLE_TIME)
         this.afterAll(() => delete options.maxIdleTime)
 
@@ -92,8 +92,14 @@ describe('Basic P2P Nodes', function () {
         })
 
         it('Leave me in group with peer', async () => {
+            await Promise.all([
+                node1.joinLobby(),
+                node2.joinLobby(),
+            ])
+
             await node1.joinGroup(node2.getID())
             node1.isConnected.should.be.true()
+
             await delay(IDLE_TIME * 2)
             node1.isConnected.should.be.true()
         })
@@ -214,8 +220,8 @@ describe('Basic P2P Nodes', function () {
 
             // We can not directly call random since the generated seed global
             // meaning calls to next will mutate the calls by the other functions.
-            node1.getHashPeerMap().should.eql(node2.getHashPeerMap())
-            node2.getHashPeerMap().should.eql(node3.getHashPeerMap())
+            node1.getHashGroupPeers().should.eql(node2.getHashGroupPeers())
+            node2.getHashGroupPeers().should.eql(node3.getHashGroupPeers())
         })
 
         it.skip('Can\'t send messages before ready', async () => {

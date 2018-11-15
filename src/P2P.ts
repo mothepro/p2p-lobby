@@ -241,8 +241,7 @@ export default class P2P<T extends Packable>
     async broadcast(data: any) {
         if (this.roomID)
             return this.ipfs.pubsub.publish(this.roomID, pack(data) as Buffer).catch(this.error)
-
-        this.error(Errors.MUST_BE_IN_ROOM)
+        this.error(Errors.MUST_BE_IN_ROOM, {data, roomID: this.roomID})
     }
 
     async readyUp() {
@@ -253,7 +252,7 @@ export default class P2P<T extends Packable>
             this.error(Errors.LEADER_READY_UP)
 
         try {
-            await this.broadcast(new ReadyUpInfo(this.hashPeerMap(this.myGroup)))
+            await this.broadcast(new ReadyUpInfo(this.hashGroupPeers()))
             await this.gotoRoom()
         }
         catch(e) { this.error(e) }
@@ -307,7 +306,7 @@ export default class P2P<T extends Packable>
             this.error(Errors.SYNC_JOIN)
         this.joiningRoom = true
 
-        seedInt(this.hashPeerMap(this.myGroup))
+        seedInt(this.hashGroupPeers())
         this.emit(Events.groupReadyInit)
 
         try {
@@ -382,7 +381,7 @@ export default class P2P<T extends Packable>
             }
         } else if (msg instanceof ReadyUpInfo) {
             // TODO: Wait for peers before failing
-            if (this.hashPeerMap(this.myGroup) != msg.hash)
+            if (this.hashGroupPeers() != msg.hash)
                 this.error(Errors.LIST_MISMATCH)
             this.gotoRoom()
         } else
@@ -456,7 +455,8 @@ export default class P2P<T extends Packable>
                 await new Promise(resolve => {
                     setTimeout(async () => {
                         this.removeListener(Events.lobbyJoin, noLongerMissing)
-                        await this.broadcast(new Introduction(this.name, this.leader, missingPeers.size > 0))
+                        if (this.roomID) // check incase we have left the lobby. (easier than cancelling this timeout)
+                            await this.broadcast(new Introduction(this.name, this.leader, missingPeers.size > 0))
                         resolve()
                     }, P2P.MISSING_WAIT)
                 })
@@ -526,13 +526,13 @@ export default class P2P<T extends Packable>
      * Generates a number based on the peers connected to the current room.
      * Meaning this value should be consistent with all other peers as well.
      */
-    private hashPeerMap(peers: ReadonlySet<PeerID>) {
+    private hashGroupPeers() {
         // Alphabet of Base58 characters used in peer id's
         const ALPHABET = '0123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 
         let allIdHash = 1
         let idHash
-        for (const id of [...peers, this.id].sort()) {
+        for (const id of [...this.myGroup, this.id].sort()) {
             idHash = 0
             for(let i = 0; i < id.length; i++)
                 idHash += (ALPHABET.indexOf(id[i]) + 1) * (ALPHABET.length * i + 1)

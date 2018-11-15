@@ -32,8 +32,8 @@ class MockP2P extends P2P<string> {
         return this['id']
     }
 
-    public getHashPeerMap(): number {
-        return this['hashPeerMap']()
+    public getHashGroupPeers(): number {
+        return this['hashGroupPeers']()
     }
 
     public toString() {
