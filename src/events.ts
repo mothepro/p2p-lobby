@@ -1,59 +1,62 @@
-import {PeerID} from 'ipfs'
+import { PeerID } from 'ipfs'
 
 const enum Events {
+    /** An error occured */
     error,
 
-    // network
+    /** Recieved some data */
+    data,
+
+    /** Connected to the P2P network */
     connected,
+    /** Disconnected from the P2P network */
     disconnected,
 
-    data,
-    roomReady,
-
-    // Connecting a room
-    roomConnect,
+    /** Connected to the lobby */
     lobbyConnect,
-    peerConnect,
-
-    // Peer connections
-    peerJoin,
-    peerLeft,
-    peerChange,
-
-    // Lobby specific peer connections
+    /** A peer has joined the lobby */
     lobbyJoin,
+    /** A peer has left the lobby */
     lobbyLeft,
+    /** A peer has joined or left the lobby */
     lobbyChange,
 
-    // My room specific peer connections
-    meJoin,
-    meLeft,
-    meChange,
+    /** A peer has joined my group */
+    groupJoin,
+    /** A peer has left my group */
+    groupLeft,
+    /** A peer has joined or left my group */
+    groupChange,
+    /** The group and all members are ready in shared room */
+    groupReady,
+    
+    /** The group leader has requested to move group members to a private room */
+    groupReadyInit,
+    /** Connected to private room which will soon have all group members */
+    groupConnect,
 }
 
 /** The data which should be emitted with every event. */
 export interface EventMap {
     [Events.error]: Error
+    
+    [Events.data]: {peer: PeerID, data: any}
+
     [Events.connected]: void
     [Events.disconnected]: void
 
-    [Events.data]: {peer: PeerID, data: any}
-    [Events.roomReady]: void
-    [Events.roomConnect]: void
     [Events.lobbyConnect]: void
-    [Events.peerConnect]: void
-
-    [Events.peerJoin]: PeerID
-    [Events.peerLeft]: PeerID
-    [Events.peerChange]: {peer: PeerID, joined: boolean}
-
     [Events.lobbyJoin]: PeerID
     [Events.lobbyLeft]: PeerID
     [Events.lobbyChange]: {peer: PeerID, joined: boolean}
 
-    [Events.meJoin]: PeerID
-    [Events.meLeft]: PeerID
-    [Events.meChange]: {peer: PeerID, joined: boolean}
+    [Events.groupJoin]: PeerID
+    [Events.groupLeft]: PeerID
+    [Events.groupChange]: {peer: PeerID, joined: boolean}
+
+    [Events.groupReady]: void
+    [Events.groupReadyInit]: void
+    [Events.groupConnect]: void
 }
 
 export default Events // Can't be all in one line :(
