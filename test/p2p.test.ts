@@ -199,11 +199,11 @@ describe('Basic P2P Nodes', function () {
                     forEvent(node2, Events.groupReady),
                     forEvent(node3, Events.groupReady),
                 ])
-                console.log('`node2` & `node3` are connected to `node1`\'s room')
+                console.log('`node2` & `node3` are connected to `node1`\'s group')
             })
         })
 
-        it.only('Ready up', async () => {
+        it('Ready up', async () => {
             await node1.readyUp()
             await allReady
         })

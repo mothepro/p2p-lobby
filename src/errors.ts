@@ -7,6 +7,7 @@ const enum Errors {
     ROOM_NOT_READY      = 'Can not perform this action until the room is ready',
     LIST_MISMATCH       = 'Our list of peers is inconsistent with the peer we joined',
     UNEXPECTED_MESSAGE  = 'An unexpected message was recieved',
+    LEADER_IN_GROUP     = 'The peer youre trying to join is already in a different group',
     POLLING_LOBBY       = 'An error was encountered while polling peers in the lobby',
     POLLING_ROOM        = 'An error was encountered while polling peers in a room',
 }

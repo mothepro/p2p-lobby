@@ -37,11 +37,8 @@ export default class P2P<T extends Packable>
     /** id's of all in lobby */
     private readonly lobby: Set<PeerID> = new Set
 
-    /** id's of group members */
-    private readonly group: Set<PeerID> = new Set
-
-    /** id's of the group leaders and all their followers. */
-    // private readonly groups: Map<PeerID, Set<PeerID>> = new Map
+    /** id's of all peers and their group leader's id. */
+    private readonly allGroups: Map<PeerID, PeerID> = new Map
 
     /** ID of group leader */
     private leader: PeerID = ''
@@ -50,7 +47,7 @@ export default class P2P<T extends Packable>
     private id: PeerID = ''
 
     /** Temporary holding of the peers in room. Room is ready once this matches `this.group` */
-    private peersInRoom?: Set<PeerID> = new Set
+    private peersInRoom?: Set<PeerID>
 
     private status: ConnectionStatus = ConnectionStatus.OFFLINE
     private joiningRoom = false
@@ -124,11 +121,23 @@ export default class P2P<T extends Packable>
 
     get inRoom()      { return this.isConnected && !this.inLobby && this.inGroup && !!this.leader }
 
-    get inGroup()     { return !!this.group.size }
+    get inGroup()     { return !!this.myGroup.size }
 
-    get groupPeers()  { return this.peersInSet(this.group) }
+    get groupPeers()  { return this.peersInSet(this.myGroup) }
 
     get lobbyPeers()  { return this.peersInSet(this.lobby) }
+
+    get isReady()     { return this.peersInRoom == undefined && this.inRoom }
+
+    /** id's of group members */
+    private get myGroup(): ReadonlySet<PeerID> {
+        const group = new Set
+        if (this.leader) // Only do this if already in a group
+            for (const [peer, leader] of this.allGroups)
+                if (leader == this.leader)
+                    group.add(peer)
+        return group
+    }
 
     /** The ID of the IPFS room we are currently connected to */
     private get roomID(): RoomID | void {
@@ -166,8 +175,9 @@ export default class P2P<T extends Packable>
             // Leave rooms manually since ipfs.stop doesn't disconnect us.
             await this.leaveRoom()
             this.allPeers.clear()
-            this.group.clear()
+            this.allGroups.clear()
             this.lobby.clear()
+            this.leader = ''
             try {
                 await this.ipfs.stop()
                 this.status = ConnectionStatus.READY
@@ -202,17 +212,24 @@ export default class P2P<T extends Packable>
 
     /** Joins a new group. */
     async joinGroup(peer: PeerID) {
-        if (peer == this.leader)
+        if (peer == this.leader || peer == this.id)
             return
 
         if (!this.inLobby)
             this.error(Errors.MUST_BE_IN_LOBBY)
 
-        if (this.inGroup)
-            this.group.clear()
+        if (this.lobby.has(peer) && this.allGroups.get(peer) != '' && this.allGroups.get(peer) != peer)
+            this.error(Errors.LEADER_IN_GROUP)
 
+        this.allGroups.set(peer, peer)
         this.leader = peer
-        this.broadcast(new Introduction(this.name, this.leader, false))
+
+        this.emit(Events.groupStart)
+        for (const peer of this.myGroup) {
+            this.emit(Events.groupJoin, peer)
+            this.emit(Events.groupChange, {peer, joined: true})
+        }
+        return this.broadcast(new Introduction(this.name, this.leader, false))
     }
 
     /**
@@ -236,7 +253,7 @@ export default class P2P<T extends Packable>
             this.error(Errors.LEADER_READY_UP)
 
         try {
-            await this.broadcast(new ReadyUpInfo(this.hashPeerMap(this.group)))
+            await this.broadcast(new ReadyUpInfo(this.hashPeerMap(this.myGroup)))
             await this.gotoRoom()
         }
         catch(e) { this.error(e) }
@@ -279,8 +296,8 @@ export default class P2P<T extends Packable>
             try      { await this.ipfs.pubsub.unsubscribe(this.roomID as RoomID, this.onRoomMessage) }
             catch(e) { this.error(e) }
             finally  {
-                this.group.clear()
                 this.leader = ''
+                delete this.peersInRoom
             }
     }
 
@@ -290,30 +307,33 @@ export default class P2P<T extends Packable>
             this.error(Errors.SYNC_JOIN)
         this.joiningRoom = true
 
-        seedInt(this.hashPeerMap(this.group))
+        seedInt(this.hashPeerMap(this.myGroup))
         this.emit(Events.groupReadyInit)
 
-        await this.leaveRoom()
-        // this.leader must be kept to know the room ID when leaving
-        await this.ipfs.pubsub.subscribe(this.leader, this.onRoomMessage, {discover: true}).catch(this.error)
+        try {
+            await this.leaveRoom()
+            // this.leader must be kept to know the room ID when leaving
+            await this.ipfs.pubsub.subscribe(this.leader, this.onRoomMessage, {discover: true})
 
-        this.inLobby = false
-        this.joiningRoom = false
-        this.emit(Events.groupConnect)
-
-        this.peersInRoom = new Set
-        this.pollRoom()
+            this.emit(Events.groupConnect)
+            this.peersInRoom = new Set
+            this.pollRoom()
+        }
+        catch(e) { this.error(e) }
+        finally {
+            this.inLobby = false
+            this.joiningRoom = false
+        }
     }
 
-    private onRoomMessage({from, data}: Message) {
+    private onRoomMessage = ({from, data}: Message) =>
         // TODO: Check if room is ready before emitting
         this.emit(Events.data, {
             data: unpack(data),
             peer: from.toString(),
         })
-    }
 
-    private onLobbyMessage({from, data}: Message) {
+    private onLobbyMessage = ({from, data}: Message) => {
         const peer = from.toString()
 
         // we don't care about our own messages in the lobby
@@ -336,20 +356,25 @@ export default class P2P<T extends Packable>
             }
 
             // Joining a group about me
-            if (!this.group.has(peer) && (
-                   (this.inGroup  && msg.leader == this.leader) // peer is joining the group im in
+            if (!this.myGroup.has(peer) && (
+                   ( this.leader  && msg.leader == this.leader) // peer is joining the group im in
                 || (!this.inGroup && msg.leader == this.id)     // peer is making me the leader of a new group
             )) {
-                if (!this.inGroup) // I am a group leader now
+                if (!this.inGroup)  { // I am a group leader now
                     this.leader = this.id
-                this.group.add(peer)
+                    this.emit(Events.groupStart)
+                }
+                this.allGroups.set(peer, this.leader) // they are in our group now
                 this.emit(Events.groupJoin, peer)
                 this.emit(Events.groupChange, {peer, joined: true})
-            }
+            } // else
+
+            // Change group that peer belongs to
+            this.allGroups.set(peer, msg.leader)
 
             // Leaving a group with me
-            if (this.group.has(peer) && msg.leader != this.leader) {
-                this.group.delete(peer)
+            if (this.myGroup.has(peer) && msg.leader != this.leader) {
+                this.allGroups.set(peer, '')
                 if (!this.inGroup) // Everyone left my room :(
                     this.leader = ''
                 this.emit(Events.groupLeft, peer)
@@ -357,7 +382,7 @@ export default class P2P<T extends Packable>
             }
         } else if (msg instanceof ReadyUpInfo) {
             // TODO: Wait for peers before failing
-            if (this.hashPeerMap(this.group) != msg.hash)
+            if (this.hashPeerMap(this.myGroup) != msg.hash)
                 this.error(Errors.LIST_MISMATCH)
             this.gotoRoom()
         } else
@@ -378,8 +403,8 @@ export default class P2P<T extends Packable>
             const updatedPeerList = await this.ipfs.pubsub.peers(this.roomID as RoomID).catch(this.error)
 
             const missingPeers = new Set
-            const peersJoined = updatedPeerList.filter(peer => !this.allPeers.has(peer))
-            const peersLeft = [...this.allPeers.keys()].filter(peer => !updatedPeerList.includes(peer))
+            const peersJoined = updatedPeerList.filter(peer => !this.lobby.has(peer))
+            const peersLeft = [...this.lobby].filter(peer => !updatedPeerList.includes(peer))
 
             for (const peer of peersJoined) {
                 if (peer == this.id) continue // don't track self
@@ -405,10 +430,21 @@ export default class P2P<T extends Packable>
                     this.emit(Events.lobbyLeft, peer)
                     this.emit(Events.lobbyChange, {peer, joined: false})
                 }
-                
+
+                // someone from group disconnected
+                if (this.myGroup.has(peer)) {
+                    this.allGroups.set(peer, '')
+                    if (!this.inGroup) // Everyone left my room :(
+                        this.leader = ''
+                    this.emit(Events.groupLeft, peer)
+                    this.emit(Events.groupChange, {peer, joined: false})
+                    if (!this.inGroup) // wait for the other events
+                        this.emit(Events.groupDone)
+                }
+
                 // The leader of our group left, so we should leave too.
                 if (peer == this.leader)
-                    this.leaveGroup()
+                    await this.leaveGroup()
             }
             
             // Introduce myself if someone we don't know joined
@@ -432,7 +468,7 @@ export default class P2P<T extends Packable>
         }
     }
 
-    private async pollRoom() {
+    private pollRoom = async () => {
         if (!this.inRoom)
             return
 
@@ -442,32 +478,39 @@ export default class P2P<T extends Packable>
             // Still waiting for all the group members to join
             if (this.peersInRoom) {
                 const peersJoined = updatedPeerList.filter(peer => !this.peersInRoom!.has(peer))
+
                 for (const peer of peersJoined) {
                     if (peer == this.id) continue // don't track self
 
-                    if (this.group.has(peer))
-                        this.peersInRoom!.add(peer)
+                    if (this.myGroup.has(peer))
+                        this.peersInRoom.add(peer)
                     else
                         this.error(Errors.UNEXPECTED_PEER, {peer})
                 }
 
                 // All the peers who could make it are finally here.
-                if (this.group.size == this.peersInRoom.size) {
+                if (this.myGroup.size == this.peersInRoom.size) {
                     delete this.peersInRoom
                     this.emit(Events.groupReady)
                 }
             }
 
-            const peersLeft = [...this.peersInRoom!].filter(peer => !updatedPeerList.includes(peer))
+            // We don't want to track peers who haven't joined yet as peers who left.
+            const trackAgainst = this.peersInRoom ? this.peersInRoom : this.myGroup
+
+            const peersLeft = [...trackAgainst].filter(peer => !updatedPeerList.includes(peer))
             for (const peer of peersLeft) {
                 if (peer == this.id) continue // don't track self
 
-                if (this.group.has(peer)) {
-                    this.group.delete(peer)
+                if (trackAgainst.has(peer)) {
+                    this.allGroups.set(peer, '')
                     this.emit(Events.groupLeft, peer)
                     this.emit(Events.groupChange, {peer, joined: false})
-                } else
-                    this.error(Errors.UNEXPECTED_PEER, {peer})
+                    if (!this.inGroup) {
+                        this.leader = ''
+                        this.emit(Events.groupDone)
+                    }
+                } // else, ignore a random peer leaving
             }
 
             if (this.inGroup) // keep polling if there are still peers in group
@@ -483,7 +526,7 @@ export default class P2P<T extends Packable>
      * Generates a number based on the peers connected to the current room.
      * Meaning this value should be consistent with all other peers as well.
      */
-    private hashPeerMap(peers: Set<PeerID>) {
+    private hashPeerMap(peers: ReadonlySet<PeerID>) {
         // Alphabet of Base58 characters used in peer id's
         const ALPHABET = '0123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 
@@ -499,7 +542,7 @@ export default class P2P<T extends Packable>
         return allIdHash - 0x7FFFFFFF
     }
 
-    private peersInSet(set: Set<PeerID>): Map<PeerID, T> {
+    private peersInSet(set: ReadonlySet<PeerID>): Map<PeerID, T> {
         const peers = new Map
         for(const peerId of set)
             peers.set(peerId, this.allPeers.get(peerId)) // should never be null

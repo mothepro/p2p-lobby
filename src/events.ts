@@ -21,6 +21,10 @@ const enum Events {
     /** A peer has joined or left the lobby */
     lobbyChange,
 
+    /** A new group is made */
+    groupStart,
+    /** A group is closed */
+    groupDone,
     /** A peer has joined my group */
     groupJoin,
     /** A peer has left my group */
@@ -50,6 +54,8 @@ export interface EventMap {
     [Events.lobbyLeft]: PeerID
     [Events.lobbyChange]: {peer: PeerID, joined: boolean}
 
+    [Events.groupStart]: void
+    [Events.groupDone]: void
     [Events.groupJoin]: PeerID
     [Events.groupLeft]: PeerID
     [Events.groupChange]: {peer: PeerID, joined: boolean}
