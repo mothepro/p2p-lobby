@@ -15,7 +15,7 @@ export default function myRoomConnect(
     node: P2P<any>,
     {peer, joined}: {peer: PeerID, joined: boolean},
 ) {
-    const peerName = htmlSafe(node.peers.get(peer)!)
+    const peerName = htmlSafe(node.getPeerName(peer)!)
 
     if (joined) {
         numPeersWaiting++
@@ -35,7 +35,7 @@ export default function myRoomConnect(
                 readyBtn.disabled = true
                 log('Attempting ready the room')
                 await node.readyUp()
-                log('Room is ready with ', node.peers.size, 'peers')
+                log('Room is ready with ', node.groupPeers.size, 'peers')
             })
 
             li.appendChild(readyBtn)

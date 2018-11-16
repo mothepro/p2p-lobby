@@ -11,7 +11,7 @@ export default function lobbyConnect(
     node: P2P<any>,
     {peer, joined}: {peer: PeerID, joined: boolean},
 ) {
-    const peerName = htmlSafe(node.peers.get(peer)!)
+    const peerName = htmlSafe(node.getPeerName(peer)!)
 
     if (joined) {
         log('Welcome to the lobby ', peerName)
@@ -28,14 +28,14 @@ export default function lobbyConnect(
         li.innerHTML = peerName
         li.id = `lobby-${peer}`
 
-        if (node.isLobby && !hasPeers()) {
+        if (node.inLobby && !hasPeers()) {
             const joinBtn = document.createElement('button')
             joinBtn.className = 'btn btn-outline-secondary joinBtn'
             joinBtn.innerHTML = 'Join'
             joinBtn.addEventListener('click', async () => {
                 log('Attempting to join', peerName)
                 joinBtn.disabled = true
-                await node.joinPeer(peer)
+                await node.joinGroup(peer)
                 peerList.innerHTML = '' // we don't know about the lobby anymore
                 log(`Now waiting in ${peerName}'s room`)
             })

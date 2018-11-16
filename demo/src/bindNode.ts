@@ -25,14 +25,11 @@ export default function bindNode(node: P2P<string>) {
         log('Node disconnected')
     })
 
-    node.on(Events.peerJoin, peer => log('Welcome', htmlSafe(node.peers.get(peer))))
-    node.on(Events.peerLeft, peer => log('See ya', htmlSafe(node.peers.get(peer))))
-
     node.on(Events.lobbyChange, peerState => lobbyConnect(node, peerState))
-    node.on(Events.meChange, peerState => myRoomConnect(node, peerState))
+    node.on(Events.groupChange, peerState => myRoomConnect(node, peerState))
 
     // Show chat box and clear peer lists for new peers
-    node.on(Events.roomReady, () => {
+    node.on(Events.groupReady, () => {
         log('Room ready')
         // We dont care about the lobby anymore, but don't remove if they join back
         lobbyPeerList.innerHTML = ''
@@ -44,7 +41,7 @@ export default function bindNode(node: P2P<string>) {
         li.innerHTML = 'Peers in this room'
         myPeerList.appendChild(li)
 
-        for(const [peerId, name] of node.peers) {
+        for(const [peerId, name] of node.groupPeers) {
             const li = document.createElement('li')
             li.className = 'list-group-item'
             li.innerHTML = htmlSafe(name)
@@ -55,7 +52,7 @@ export default function bindNode(node: P2P<string>) {
 
     // Incoming messages
     node.on(Events.data, ({peer, data}: {peer: PeerID, data: any}) => {
-        const peerName = htmlSafe(node.peers.has(peer) ? node.peers.get(peer)! : node.name)
+        const peerName = htmlSafe(node.getPeerName(peer) || node.name)
 
         if (data instanceof RandomRequest)
             log(peerName, 'made the random number', node.random(data.isInt))
