@@ -1,6 +1,6 @@
 {
   "name": "p2p-lobby",
-  "version": "0.0.17",
+  "version": "0.1.0",
   "description": "A type safe lobby system built on IPFS",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
