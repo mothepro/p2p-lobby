@@ -11,7 +11,7 @@ import {Introduction, ReadyUpInfo} from './messages'
 import {nextFloat, nextInt, seedInt} from './rng'
 import {version} from '../package.json'
 import Errors from './errors'
-import Events, { EventMap } from './events'
+import Events, {EventMap} from './events'
 
 type Constructor<Instance> = { new(...args: any[]): Instance }
 type RoomID = string | PeerID
@@ -86,9 +86,9 @@ export default class P2P<T extends Packable>
 
         this.ipfs.on('ready', () => this.status = ConnectionStatus.READY)
         this.ipfs.on('error', this.error)
-        addEventListener('beforeunload', async e => {
+        addEventListener('beforeunload', e => {
             e.preventDefault()
-            await this.disconnect()
+            this.disconnect()
 
             // Chrome requires returnValue to null so no prompt appears.
             return e.returnValue = undefined
@@ -96,7 +96,7 @@ export default class P2P<T extends Packable>
 
         // Disconnect peers idling in lobby
         if (maxIdleTime) {
-            let handle: NodeJS.Timeout | void
+            let handle: number | void
             const stopIdleCountdown = () => {
                 if(handle) {
                     clearTimeout(handle)
@@ -108,7 +108,7 @@ export default class P2P<T extends Packable>
                 handle = setTimeout(
                     () => !this.inGroup && this.disconnect(),
                     maxIdleTime
-                ) as unknown as NodeJS.Timeout
+                ) as unknown as number
             })
             this.on(Events.disconnected, stopIdleCountdown)
             this.on(Events.groupReadyInit, stopIdleCountdown)
@@ -143,9 +143,9 @@ export default class P2P<T extends Packable>
     private get roomID(): RoomID | void {
         return !this.isConnected
                 ? undefined
-                : this.inLobby 
+                : this.inLobby
                     ? this.LOBBY_ID
-                    : this.inRoom 
+                    : this.inRoom
                         ? this.leader
                         : undefined
     }
@@ -236,7 +236,7 @@ export default class P2P<T extends Packable>
      * Shortcut to leave all groups.
      * Doesn't need to be called to change groups.
      */
-    public leaveGroup = async () => this.joinGroup('') 
+    public leaveGroup = async () => this.joinGroup('')
 
     async broadcast(data: any) {
         if (this.roomID)
@@ -247,7 +247,7 @@ export default class P2P<T extends Packable>
     async readyUp() {
         if (!this.inLobby)
             this.error(Errors.MUST_BE_IN_LOBBY)
-        
+
         if (!this.isLeader)
             this.error(Errors.LEADER_READY_UP)
 
@@ -271,7 +271,7 @@ export default class P2P<T extends Packable>
     }
 
     getPeerName = (peer: PeerID) => this.allPeers.get(peer)
-    
+
     /**
      * Helper to ensure errors are thrown properly.
      * TODO: Broadcast messages if in room
@@ -380,10 +380,19 @@ export default class P2P<T extends Packable>
                 this.emit(Events.groupChange, {peer, joined: false})
             }
         } else if (msg instanceof ReadyUpInfo) {
-            // TODO: Wait for peers before failing
-            if (this.hashGroupPeers() != msg.hash)
-                this.error(Errors.LIST_MISMATCH)
-            this.gotoRoom()
+            if (peer == this.leader) {
+                // TODO: Wait for peers before failing
+                if (this.hashGroupPeers() != msg.hash)
+                    this.error(Errors.LIST_MISMATCH)
+                this.gotoRoom()
+            } else
+                // clean lobby of groups we know are leaving
+                for(const [other, leader] of this.allGroups)
+                    if(leader == peer) {
+                        this.lobby.delete(other)
+                        this.emit(Events.lobbyLeft, other)
+                        this.emit(Events.lobbyChange, {peer: other, joined: false})
+                    }
         } else
             this.error(Errors.UNEXPECTED_MESSAGE, {peer, data: msg})
     }
@@ -391,7 +400,7 @@ export default class P2P<T extends Packable>
     /**
      * Runs a check against ipfs.pubsub.peers to find who has left and entered the lobby.
      * After completion will run again in `this.pollInterval`ms.
-     * 
+     *
      * Doesn't track peers who left and came back.
      */
     private pollLobby = async () => {
@@ -409,7 +418,7 @@ export default class P2P<T extends Packable>
                 if (peer == this.id) continue // don't track self
 
                 // An unknown peer joined the lobby
-                if (!this.allPeers.has(peer)) 
+                if (!this.allPeers.has(peer))
                     missingPeers.add(peer)
 
                 // we know them, but didn't know they were in the lobby
@@ -445,7 +454,7 @@ export default class P2P<T extends Packable>
                 if (peer == this.leader)
                     await this.leaveGroup()
             }
-            
+
             // Introduce myself if someone we don't know joined
             if (missingPeers.size) {
                 const noLongerMissing = (peer: PeerID) => missingPeers.delete(peer)
@@ -463,7 +472,7 @@ export default class P2P<T extends Packable>
             }
 
             setTimeout(this.pollLobby, this.pollInterval) // quit polling on error
-        } catch(originalError) { 
+        } catch(originalError) {
             this.error(Errors.POLLING_LOBBY, {originalError})
         }
     }
@@ -517,7 +526,7 @@ export default class P2P<T extends Packable>
                 setTimeout(this.pollRoom, this.pollInterval)
             else // no point in staying in an empty room
                 this.leaveRoom()
-        } catch(originalError) { 
+        } catch(originalError) {
             this.error(Errors.POLLING_ROOM, {originalError, roomID: this.roomID})
         }
     }

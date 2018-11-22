@@ -1,16 +1,16 @@
 import 'mocha'
 import 'should'
-import createNode, { MockP2Popts } from './util/LocalP2P'
-import { delay, forEvent, forEventWithValue } from './util/util'
+import createNode from './util/LocalP2P'
+import {delay, forEvent, forEventWithValue} from './util/util'
 import Errors from '../src/errors'
 import Events from '../src/events'
+import {P2Popts} from '../src/P2P'
+import P2P from '..'
 
-type MockP2P = ReturnType<typeof createNode>
-
-const options: Partial<MockP2Popts> = {}
-let node1: MockP2P,
-    node2: MockP2P,
-    node3: MockP2P
+const options: Partial<P2Popts> = {}
+let node1: P2P<string>,
+    node2: P2P<string>,
+    node3: P2P<string>
 
 it('Connect & Disconnect Node', async function () {
     // this.timeout(5 * 1000) // wait longer for disconnection
@@ -30,23 +30,24 @@ describe('Basic P2P Nodes', function () {
 
     beforeEach(function () {
         // this.timeout(60 * 1000)
-    
+
         node1 = createNode(options)
         node2 = createNode(options)
         node3 = createNode(options)
-    
+
         for(const node of [node1, node2, node3]) {
-            node.on(Events.disconnected as any, () => console.log(`${node.name} is diconnected. (${node.getID()})`))
-            node.on(Events.error as any, (e: Error) => { throw e })
+            // idk why these cast is needed
+            (node as any).on(Events.error, (e: Error) => { throw e });
+            (node as any).on(Events.disconnected, () => console.log(`${node.name} is diconnected. (${node['id']})`));
         }
-    
+
         return Promise.all([
             node1.connect(),
             node2.connect(),
             node3.connect(),
         ]).then(() => console.log('All nodes connected.'))
     })
-    
+
     afterEach(function () {
         // this.timeout(10 * 1000)
 
@@ -63,7 +64,7 @@ describe('Basic P2P Nodes', function () {
         .catch(e => {}) // swallow
         .then(() => console.log('All nodes disconnected.'))
     })
-    
+
     it('Should block a second connection', async () => {
         forEvent(node1, Events.error).should.be.fulfilledWith(Errors.SYNC_JOIN)
 
@@ -97,7 +98,7 @@ describe('Basic P2P Nodes', function () {
                 node2.joinLobby(),
             ])
 
-            await node1.joinGroup(node2.getID())
+            await node1.joinGroup(node2['id'])
             node1.isConnected.should.be.true()
 
             await delay(IDLE_TIME * 2)
@@ -117,12 +118,12 @@ describe('Basic P2P Nodes', function () {
                 node2.joinLobby(),
             ])
 
-            node2.getID().should.eql(id2)
-            node1.getID().should.eql(id1)
+            node2['id'].should.eql(id2)
+            node1['id'].should.eql(id1)
         })
 
         it('Many Nodes Join', async () => {
-            node1.on(Events.lobbyLeft as any, () => {throw Error('No peers should be leaving')})
+            (node1 as any).on(Events.lobbyLeft, () => {throw Error('No peers should be leaving')})
 
             const [node1peerIDs] = await Promise.all([
                 forEvent(node1, Events.lobbyJoin, 2),
@@ -132,11 +133,20 @@ describe('Basic P2P Nodes', function () {
                 node3.joinLobby(),
             ])
 
-            node1peerIDs.should.containEql(node2.getID())
-            node1peerIDs.should.containEql(node3.getID())
-            
-            node1.getPeerName(node2.getID()).should.eql(node2.name)
-            node1.getPeerName(node3.getID()).should.eql(node3.name)
+            node1peerIDs.should.containEql(node2['id'])
+            node1peerIDs.should.containEql(node3['id'])
+
+            const node2name = node1.getPeerName(node2['id']),
+                node3name = node1.getPeerName(node3['id'])
+
+            if (!node2name)
+                throw Error('Node 2 should have a name')
+
+            if (!node3name)
+                throw Error('Node 3 should have a name')
+
+            node2name.should.eql(node2.name)
+            node3name.should.eql(node3.name)
         })
 
         it('Node Leaving', async function () {
@@ -154,8 +164,8 @@ describe('Basic P2P Nodes', function () {
             ])
 
             await Promise.all([
-                forEventWithValue(node1, Events.lobbyLeft, node3.getID()),
-                forEventWithValue(node2, Events.lobbyLeft, node3.getID()),
+                forEventWithValue(node1, Events.lobbyLeft, node3['id']),
+                forEventWithValue(node2, Events.lobbyLeft, node3['id']),
                 node3.disconnect(),
             ])
         })
@@ -194,8 +204,8 @@ describe('Basic P2P Nodes', function () {
                 forEvent(node2, Events.groupJoin, 2),
                 forEvent(node3, Events.groupJoin, 2),
 
-                node2.joinGroup(node1.getID()),
-                node3.joinGroup(node1.getID()), 
+                node2.joinGroup(node1['id']),
+                node3.joinGroup(node1['id']),
             ]))
             .catch(err => console.log('error', err))
             .then(() => {
@@ -220,8 +230,8 @@ describe('Basic P2P Nodes', function () {
 
             // We can not directly call random since the generated seed global
             // meaning calls to next will mutate the calls by the other functions.
-            node1.getHashGroupPeers().should.eql(node2.getHashGroupPeers())
-            node2.getHashGroupPeers().should.eql(node3.getHashGroupPeers())
+            node1['hashGroupPeers']().should.eql(node2['hashGroupPeers']())
+            node2['hashGroupPeers']().should.eql(node3['hashGroupPeers']())
         })
 
         it.skip('Can\'t send messages before ready', async () => {
@@ -241,11 +251,11 @@ describe('Basic P2P Nodes', function () {
 
             const msgs = [
                 {
-                    peer: node2.getID(),
+                    peer: node2['id'],
                     data: 'hello all',
                 },
                 {
-                    peer: node1.getID(),
+                    peer: node1['id'],
                     data: 'what\'s up peers',
                 }
             ]
