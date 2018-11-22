@@ -9,7 +9,7 @@
     "build:prod": "simplifyify index.ts -s p2p -o dist/umd/bundle.min.js --minify",
     "build:demo": "simplifyify demo/demo.ts -o dist/umd/demo.bundle.js --debug --bundle",
     "build": "npm run build:dev && npm run build:prod && npm run build:demo",
-    "mocha": "cross-env TS_NODE_COMPILER_OPTIONS='{\"preserveConstEnums\": true}' mocha --exit --require ts-node/register/transpile-only --timeout 180000 test/*.test.ts",
+    "mocha": "cross-env TS_NODE_COMPILER_OPTIONS={\\\"preserveConstEnums\\\":true} mocha --exit --require ts-node/register/transpile-only --timeout 180000 test/*.test.ts",
     "test": "tsc && npm run mocha",
     "coverage": "nyc -r html -r text-summary -n src/**/*.ts -e .ts npm run mocha",
     "prerelease": "tsc && npm run build",
