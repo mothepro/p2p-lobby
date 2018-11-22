@@ -1,14 +1,14 @@
 import P2P from '../..'
 import {PeerID} from 'ipfs'
 import log from './log'
-import { htmlSafe } from './util'
-import { hasPeers } from './myRoomConnect'
+import {htmlSafe} from './util'
+import {hasPeers} from './myRoomConnect'
 
 const peerList = document.getElementById('lobby-peers')! as HTMLUListElement
 
 /** This is triggered when someone joines the lobby */
 export default function lobbyConnect(
-    node: P2P<any>,
+    node: P2P,
     {peer, joined}: {peer: PeerID, joined: boolean},
 ) {
     const peerName = htmlSafe(node.getPeerName(peer)!)

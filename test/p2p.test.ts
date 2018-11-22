@@ -6,9 +6,9 @@ import Events from '../src/events'
 import P2P from '..'
 
 const pollInterval = 50
-let node1: P2P<string>,
-    node2: P2P<string>,
-    node3: P2P<string>
+let node1: P2P,
+    node2: P2P,
+    node3: P2P
 
 it('Connect & Disconnect Node', async function () {
     // this.timeout(5 * 1000) // wait longer for disconnection
@@ -217,6 +217,19 @@ describe('Basic P2P Nodes', function () {
         it('Ready up', async () => {
             await node1.readyUp()
             await allReady
+        })
+
+        it('Ready up with info', async () => {
+            // Here we can not use a complex value since it has a different reference when unpacked
+            const info = 'hello world'
+
+            await Promise.all([
+                forEventWithValue(node1, Events.groupReadyInit, info),
+                forEventWithValue(node2, Events.groupReadyInit, info),
+                forEventWithValue(node3, Events.groupReadyInit, info),
+
+                node1.readyUp(info),
+            ])
         })
 
         it('Generate same random number', async () => {

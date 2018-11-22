@@ -1,12 +1,11 @@
 import P2P from '..'
-import { name as pkgName, version as pkgVersion } from '../package.json'
+import {name as pkgName, version as pkgVersion} from '../package.json'
 import bindNode from './src/bindNode'
 import log from './src/log'
-import { RandomRequest } from './src/messages'
-import { htmlSafe } from './src/util'
-import { PeerID } from 'ipfs'
+import {RandomRequest} from './src/messages'
+import {htmlSafe} from './src/util'
 
-let node: P2P<string>
+let node: P2P
 const app = document.getElementById('app')! as HTMLDivElement
 
 // Create Node & Join Lobby button is pressed
@@ -17,14 +16,7 @@ lobbyForm.addEventListener('submit', e => {
     app.removeChild(lobbyForm)
 
     log('Creating Node')
-    node = new P2P(
-        nameInput.value.trim(),
-        `my-demo-${pkgName}@${pkgVersion}`,
-        {
-            allowSameBrowser: true,
-            maxIdleTime: 30 * 60 * 1000,
-        }
-    )
+    node = new P2P(nameInput.value.trim(), `my-demo-${pkgName}@${pkgVersion}`, {allowSameBrowser: true})
     document.title += ` • ${node.name}` // Makes tab hunting easier
     joinLobby()
 })
@@ -64,7 +56,7 @@ async function joinLobby() {
     if (node) {
         log('Joining Lobby')
         bindNode(node)
-        await node.joinLobby()
+        await node.joinLobby({maxIdle: 30 * 60 * 1000})
         log(htmlSafe(node.name), 'is in the lobby')
     } else
         log(Error('Node must be created before binding'))

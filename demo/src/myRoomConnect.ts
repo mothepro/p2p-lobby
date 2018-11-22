@@ -1,7 +1,7 @@
 import P2P from '../..'
 import {PeerID} from 'ipfs'
 import log from './log'
-import { htmlSafe } from './util'
+import {htmlSafe} from './util'
 
 const peerList = document.getElementById('my-peers')! as HTMLUListElement
 let numPeersWaiting = 0
@@ -12,7 +12,7 @@ export function hasPeers() {
 
 /** This is triggered when someone joines my room */
 export default function myRoomConnect(
-    node: P2P<any>,
+    node: P2P,
     {peer, joined}: {peer: PeerID, joined: boolean},
 ) {
     const peerName = htmlSafe(node.getPeerName(peer)!)

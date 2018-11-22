@@ -1,26 +1,34 @@
 import Events, {EventMap} from '../../src/events'
 import P2P from '../..'
 
-const listeners: WeakMap<P2P<string>, Map<Events, Function>> = new WeakMap
-const RUN_TIME = Date.now()
-let total = 0
-
 // Remove default bind to the `beforeunload` event
 declare const global: NodeJS.Global & { addEventListener: Function }
 global.addEventListener = () => {}
 
-/** A P2P Lobby with defaults to communicate to other nodes within the same client. */
+const listeners: WeakMap<P2P, Map<Events, Function>> = new WeakMap
+const RUN_TIME = Date.now()
+let total = 0
+
+/** Make a P2P Lobby with defaults to communicate to other nodes within the same client. */
 export const createNode = () =>
     new P2P(`node-#${++total}`,'p2p-lobby-local', {
         repo: `test-data/${RUN_TIME}/${total}`,
         Swarm: ['/ip4/127.0.0.1/tcp/0'],
     })
 
-export async function delay(ms: number) {
-    return new Promise(resolve => setTimeout(resolve, ms))
-}
+/** Wait for some time */
+export const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
-export function stopWaitingForEvent(node: P2P<string>, event: Events) {
+/** Wait for the `event` to be emitted `times` times on `node` */
+export const forEvent = async (node: P2P, event: Events, times = 1) =>
+    generalForEvent(node, event, {times})
+
+/** Wait for the `event` to be emitted `times` times with the value `value` on `node` */
+export const forEventWithValue = async <K extends Events, V extends EventMap[K]>
+    (node: P2P, event: K, value: V, times = 1) =>
+        generalForEvent(node, event, {times, shouldCount: arg => arg == value})
+
+export function stopWaitingForEvent(node: P2P, event: Events) {
     if(listeners.has(node) && listeners.get(node)!.has(event)) {
         (node as any).removeListener(event, listeners.get(node)!.get(event))
 
@@ -30,21 +38,8 @@ export function stopWaitingForEvent(node: P2P<string>, event: Events) {
     }
 }
 
-export async function forEvent(node: P2P<string>, event: Events, times = 1) {
-    return generalForEvent(node, event, {times})
-}
-
-export async function forEventWithValue<K extends Events, V extends EventMap[K]>(
-    node: P2P<string>,
-    event: K,
-    value: V,
-    times = 1,
-) {
-    return generalForEvent(node, event, {times, shouldCount: arg => arg === value})
-}
-
 async function generalForEvent<K extends Events, V extends EventMap[K]>(
-    node: P2P<string>,
+    node: P2P,
     event: K,
     {
         times = 1,
@@ -56,7 +51,7 @@ async function generalForEvent<K extends Events, V extends EventMap[K]>(
     let attempts = times
     const ret: V[] = []
 
-    function on(node: P2P<string>, event: Events, listener: Function) {
+    function on(node: P2P, event: Events, listener: Function) {
         // remove left over listener
         if(listeners.has(node) && listeners.get(node)!.has(event))
         stopWaitingForEvent(node, event)

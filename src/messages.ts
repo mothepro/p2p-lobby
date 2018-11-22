@@ -1,5 +1,5 @@
 import register, {PackableInst} from './packer'
-import { PeerID } from 'ipfs'
+import {PeerID} from 'ipfs'
 
 /**
  * This is a confirmation that a peer is in the lobby.
@@ -15,7 +15,7 @@ export class Introduction<T> implements PackableInst {
 
     static pack   = <U>(inst: Introduction<U>) =>
         [inst.infoRequest, inst.name, inst.leader]
-        
+
     static unpack = <U>([infoRequest, name, leader]: [boolean, U, PeerID]) =>
         new Introduction(name, leader, infoRequest)
 }
@@ -24,17 +24,19 @@ export class Introduction<T> implements PackableInst {
  * The group leader is ready to start.
  * This contains all the information about connected peers to ensure all the right peers join.
  * And that they know each other when in room.
- * 
- * TODO: Allow info to be sent along with this.
  */
-export class ReadyUpInfo implements PackableInst {
-    constructor(public hash: number) {}
+export class ReadyUpInfo<T> implements PackableInst {
+    constructor(public hash: number, public info?: T) {}
 
-    static pack   = (isnt: ReadyUpInfo) =>
-        isnt.hash
-        
-    static unpack = (hash: number) =>
-        new ReadyUpInfo(hash)
+    static pack   = <U>(isnt: ReadyUpInfo<U>) =>
+        isnt.info == undefined
+            ? isnt.hash
+            : [isnt.hash, isnt.info]
+
+    static unpack = <U>(hash: number | [number, U]) =>
+        typeof hash == 'number'
+            ? new ReadyUpInfo(hash)
+            : new ReadyUpInfo(hash[0], hash[1])
 }
 
 register(Introduction)

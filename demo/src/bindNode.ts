@@ -2,9 +2,9 @@ import P2P, {Events} from '../..'
 import lobbyConnect from './lobbyConnect'
 import myRoomConnect from './myRoomConnect'
 import log from './log'
-import { RandomRequest } from './messages'
-import { htmlSafe } from './util'
-import { PeerID } from 'ipfs'
+import {RandomRequest} from './messages'
+import {htmlSafe} from './util'
+import {PeerID} from 'ipfs'
 
 const myPeerList    = document.getElementById('my-peers')! as HTMLUListElement,
       lobbyPeerList = document.getElementById('lobby-peers')! as HTMLUListElement,
@@ -12,7 +12,7 @@ const myPeerList    = document.getElementById('my-peers')! as HTMLUListElement,
       rejoinBtn     = document.getElementById('rejoin')! as HTMLButtonElement
 
 /** binds the events for the node */
-export default function bindNode(node: P2P<string>) {
+export default function bindNode(node: P2P) {
     node.on(Events.error, log)
 
     node.on(Events.connected, () => log('Node connected'))

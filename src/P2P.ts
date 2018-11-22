@@ -19,7 +19,7 @@ type RoomID = string | PeerID
 const enum ConnectionStatus { OFFLINE, READY, DISCONNECTING, CONNECTING, ONLINE }
 
 // TODO Switch to namespace once we can have an event emitter on it
-export default class P2P<T extends Packable>
+export default class P2P<T extends Packable = string, U extends Packable = any>
     extends (EventEmitter as Constructor<StrictEventEmitter<EventEmitter, EventMap>>) {
 
     /** Time to wait for an introduction from a peer we don't know who just connected */
@@ -230,7 +230,7 @@ export default class P2P<T extends Packable>
         this.error(Errors.MUST_BE_IN_ROOM, {data, roomID: this.roomID})
     }
 
-    async readyUp() {
+    async readyUp(info?: U) {
         if (!this.inLobby)
             this.error(Errors.MUST_BE_IN_LOBBY)
 
@@ -238,8 +238,8 @@ export default class P2P<T extends Packable>
             this.error(Errors.LEADER_READY_UP)
 
         try {
-            await this.broadcast(new ReadyUpInfo(this.hashGroupPeers()))
-            await this.gotoRoom()
+            await this.broadcast(new ReadyUpInfo(this.hashGroupPeers(), info))
+            await this.gotoRoom(info) // TODO just listen on broadcast to be dryer
         }
         catch(e) { this.error(e) }
         finally  { this.joiningRoom = false }
@@ -286,13 +286,13 @@ export default class P2P<T extends Packable>
     }
 
     /** Moves to private room for just the group */
-    private async gotoRoom() {
+    private async gotoRoom(info?: U) {
         if (this.joiningRoom)
             this.error(Errors.SYNC_JOIN)
         this.joiningRoom = true
 
         seedInt(this.hashGroupPeers())
-        this.emit(Events.groupReadyInit)
+        this.emit(Events.groupReadyInit, info)
 
         try {
             await this.leave()
@@ -369,7 +369,7 @@ export default class P2P<T extends Packable>
                 // TODO: Wait for peers before failing
                 if (this.hashGroupPeers() != msg.hash)
                     this.error(Errors.LIST_MISMATCH)
-                this.gotoRoom()
+                this.gotoRoom(msg.info)
             } else
                 // clean lobby of groups we know are leaving
                 for(const [other, leader] of this.allGroups)

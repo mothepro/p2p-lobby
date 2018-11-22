@@ -1,4 +1,4 @@
-import { PeerID } from 'ipfs'
+import {PeerID} from 'ipfs'
 
 const enum Events {
     /** An error occured */
@@ -33,7 +33,7 @@ const enum Events {
     groupChange,
     /** The group and all members are ready in shared room */
     groupReady,
-    
+
     /** The group leader has requested to move group members to a private room */
     groupReadyInit,
     /** Connected to private room which will soon have all group members */
@@ -43,7 +43,7 @@ const enum Events {
 /** The data which should be emitted with every event. */
 export interface EventMap {
     [Events.error]: Error
-    
+
     [Events.data]: {peer: PeerID, data: any}
 
     [Events.connected]: void
@@ -61,7 +61,7 @@ export interface EventMap {
     [Events.groupChange]: {peer: PeerID, joined: boolean}
 
     [Events.groupReady]: void
-    [Events.groupReadyInit]: void
+    [Events.groupReadyInit]: any
     [Events.groupConnect]: void
 }
 
