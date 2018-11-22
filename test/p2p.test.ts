@@ -1,7 +1,6 @@
 import 'mocha'
 import 'should'
-import createNode from './util/LocalP2P'
-import {delay, forEvent, forEventWithValue} from './util/util'
+import {createNode, delay, forEvent, forEventWithValue} from './util/util'
 import Errors from '../src/errors'
 import Events from '../src/events'
 import P2P from '..'
