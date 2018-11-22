@@ -18,6 +18,7 @@ type RoomID = string | PeerID
 
 const enum ConnectionStatus { OFFLINE, READY, DISCONNECTING, CONNECTING, ONLINE }
 
+// TODO Switch to namespace once we can have an event emitter on it
 export default class P2P<T extends Packable>
     extends (EventEmitter as Constructor<StrictEventEmitter<EventEmitter, EventMap>>) {
 
@@ -107,6 +108,8 @@ export default class P2P<T extends Packable>
 
     get isReady()     { return this.peersInRoom == undefined && this.inRoom }
 
+    public getPeerName = (peer: PeerID) => this.allPeers.get(peer)
+
     /** id's of group members */
     private get myGroup(): ReadonlySet<PeerID> {
         const group = new Set
@@ -149,7 +152,7 @@ export default class P2P<T extends Packable>
         if (this.isConnected) {
             this.status = ConnectionStatus.DISCONNECTING
             // Leave rooms manually since ipfs.stop doesn't disconnect us.
-            await this.leaveRoom()
+            await this.leave()
             this.allPeers.clear()
             this.allGroups.clear()
             this.lobby.clear()
@@ -174,7 +177,7 @@ export default class P2P<T extends Packable>
             this.error(Errors.SYNC_JOIN)
         this.joiningRoom = true
 
-        await this.leaveRoom()
+        await this.leave()
         await this.connect()
 
         try {
@@ -198,6 +201,7 @@ export default class P2P<T extends Packable>
     }
 
     /** Joins a new group. */
+    // TODO: Return if successful and allow confirmation
     async joinGroup(peer: PeerID) {
         if (peer == this.leader || peer == this.id)
             return
@@ -208,7 +212,8 @@ export default class P2P<T extends Packable>
         if (this.lobby.has(peer) && this.allGroups.get(peer) != '' && this.allGroups.get(peer) != peer)
             this.error(Errors.LEADER_IN_GROUP)
 
-        this.allGroups.set(peer, peer)
+        if (peer) // since they may be leaving a group (peer == '')
+            this.allGroups.set(peer, peer)
         this.leader = peer
 
         this.emit(Events.groupStart)
@@ -218,12 +223,6 @@ export default class P2P<T extends Packable>
         }
         return this.broadcast(new Introduction(this.name, this.leader, false))
     }
-
-    /**
-     * Shortcut to leave all groups.
-     * Doesn't need to be called to change groups.
-     */
-    public leaveGroup = async () => this.joinGroup('')
 
     async broadcast(data: any) {
         if (this.roomID)
@@ -257,22 +256,8 @@ export default class P2P<T extends Packable>
         return isInt ? nextInt() : nextFloat()
     }
 
-    getPeerName = (peer: PeerID) => this.allPeers.get(peer)
-
-    /**
-     * Helper to ensure errors are thrown properly.
-     * TODO: Broadcast messages if in room
-     */
-    private error = (error: Errors | Error, extra: object = {}): never => {
-        if (!(error instanceof Error))
-            error = Error(error)
-        for(const [prop, value] of Object.entries(extra))
-            (error as any)[prop] = value
-        this.emit(Events.error, error)
-        throw error
-    }
-
-    private async leaveRoom() {
+    /** Leaves the lobby and the room we are connected to, if any. */
+    public async leave() {
         if (this.inLobby)
             try      { await this.ipfs.pubsub.unsubscribe(this.LOBBY_ID, this.onLobbyMessage) }
             catch(e) { this.error(e) }
@@ -287,6 +272,19 @@ export default class P2P<T extends Packable>
             }
     }
 
+    /**
+     * Helper to ensure errors are thrown properly.
+     * TODO: Broadcast messages if in room
+     */
+    private error = (error: Errors | Error, extra: object = {}): never => {
+        if (!(error instanceof Error))
+            error = Error(error)
+        for(const [prop, value] of Object.entries(extra))
+            (error as any)[prop] = value
+        this.emit(Events.error, error)
+        throw error
+    }
+
     /** Moves to private room for just the group */
     private async gotoRoom() {
         if (this.joiningRoom)
@@ -297,7 +295,7 @@ export default class P2P<T extends Packable>
         this.emit(Events.groupReadyInit)
 
         try {
-            await this.leaveRoom()
+            await this.leave()
             // this.leader must be kept to know the room ID when leaving
             await this.ipfs.pubsub.subscribe(this.leader, this.onRoomMessage, {discover: true})
 
@@ -439,7 +437,7 @@ export default class P2P<T extends Packable>
 
                 // The leader of our group left, so we should leave too.
                 if (peer == this.leader)
-                    await this.leaveGroup()
+                    await this.joinGroup('')
             }
 
             // Introduce myself if someone we don't know joined
@@ -452,7 +450,8 @@ export default class P2P<T extends Packable>
                     setTimeout(async () => {
                         this.removeListener(Events.lobbyJoin, noLongerMissing)
                         if (this.roomID) // check incase we have left the lobby. (easier than cancelling this timeout)
-                            await this.broadcast(new Introduction(this.name, this.leader, missingPeers.size > 0))
+                            await this.broadcast(
+                                new Introduction(this.name, this.leader, missingPeers.size > 0))
                         resolve()
                     }, P2P.MISSING_WAIT)
                 })
@@ -510,9 +509,11 @@ export default class P2P<T extends Packable>
             }
 
             if (this.inGroup) // keep polling if there are still peers in group
-                setTimeout(this.pollRoom, this.peersInRoom ? P2P.ROOM_WAITING_POLL_INTERVAL : P2P.ROOM_READY_POLL_INTERVAL)
+                setTimeout(this.pollRoom, this.peersInRoom
+                    ? P2P.ROOM_WAITING_POLL_INTERVAL
+                    : P2P.ROOM_READY_POLL_INTERVAL)
             else // no point in staying in an empty room
-                this.leaveRoom()
+                return this.leave()
         } catch(originalError) {
             this.error(Errors.POLLING_ROOM, {originalError, roomID: this.roomID})
         }
