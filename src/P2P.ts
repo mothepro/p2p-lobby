@@ -18,17 +18,19 @@ type RoomID = string | PeerID
 
 const enum ConnectionStatus { OFFLINE, READY, DISCONNECTING, CONNECTING, ONLINE }
 
-export interface P2Popts {
-    allowSameBrowser: boolean
-    repo: string
-    Swarm: string[]
-    pollInterval: number
-    maxIdleTime: number
-}
-
 export default class P2P<T extends Packable>
     extends (EventEmitter as Constructor<StrictEventEmitter<EventEmitter, EventMap>>) {
 
+    /** Time to wait for an introduction from a peer we don't know who just connected */
+    private static readonly MISSING_WAIT = 5 * 1000
+
+    /** How often to check for peers when waiting for them in the room's group */
+    public static readonly ROOM_WAITING_POLL_INTERVAL = 2 * 1000
+
+    /** How often to check for peers once we know everyone is in the room's group */
+    public static readonly ROOM_READY_POLL_INTERVAL = 15 * 1000
+
+    /** IPFS node */
     private readonly ipfs: Ipfs
 
     /** id's of all we have ever met */
@@ -51,14 +53,9 @@ export default class P2P<T extends Packable>
 
     private status: ConnectionStatus = ConnectionStatus.OFFLINE
     private joiningRoom = false
-
-    private readonly pollInterval: number
-    private readonly LOBBY_ID: RoomID
-
     public inLobby = false
 
-    /** Time to wait for an introduction from a peer we don't know who just connected */
-    private static readonly MISSING_WAIT = 5 * 1000
+    private readonly LOBBY_ID: RoomID
 
     constructor(
         public readonly name: T,
@@ -68,11 +65,15 @@ export default class P2P<T extends Packable>
             repo = `/tmp/p2p-lobby/${version}/${pkg +
                 allowSameBrowser ? '/' + Math.random().toString().substr(2) : ''}`,
             Swarm = ['/dns4/ws-star.discovery.libp2p.io/tcp/443/wss/p2p-websocket-star'],
-            pollInterval = 5 * 1000,
-            maxIdleTime = 0,
-        }: Partial<P2Popts> = {},
+        }: {
+            allowSameBrowser?: boolean
+            repo?: string
+            Swarm?: string[]
+        } = {},
     ) {
         super()
+
+        this.LOBBY_ID = `${pkg}_lobby_${version}` // something a peerId could never be
 
         this.ipfs = new Ipfs({
             repo,
@@ -80,12 +81,9 @@ export default class P2P<T extends Packable>
             config: { Addresses: { Swarm } },
             EXPERIMENTAL: { pubsub: true },
         })
-
-        this.LOBBY_ID = `${pkg}_lobby_${version}` // something a peerId could never be
-        this.pollInterval = pollInterval
-
         this.ipfs.on('ready', () => this.status = ConnectionStatus.READY)
         this.ipfs.on('error', this.error)
+
         addEventListener('beforeunload', e => {
             e.preventDefault()
             this.disconnect()
@@ -93,26 +91,6 @@ export default class P2P<T extends Packable>
             // Chrome requires returnValue to null so no prompt appears.
             return e.returnValue = undefined
         })
-
-        // Disconnect peers idling in lobby
-        if (maxIdleTime) {
-            let handle: number | void
-            const stopIdleCountdown = () => {
-                if(handle) {
-                    clearTimeout(handle)
-                    handle = undefined
-                }
-            }
-
-            this.on(Events.lobbyConnect, () => {
-                handle = setTimeout(
-                    () => !this.inGroup && this.disconnect(),
-                    maxIdleTime
-                ) as unknown as number
-            })
-            this.on(Events.disconnected, stopIdleCountdown)
-            this.on(Events.groupReadyInit, stopIdleCountdown)
-        }
     }
 
     get isConnected() { return this.status == ConnectionStatus.ONLINE || this.status == ConnectionStatus.DISCONNECTING }
@@ -141,13 +119,11 @@ export default class P2P<T extends Packable>
 
     /** The ID of the IPFS room we are currently connected to */
     private get roomID(): RoomID | void {
-        return !this.isConnected
-                ? undefined
-                : this.inLobby
-                    ? this.LOBBY_ID
-                    : this.inRoom
-                        ? this.leader
-                        : undefined
+        return this.inLobby
+                ? this.LOBBY_ID
+                : this.inRoom
+                    ? this.leader
+                    : undefined
     }
 
     async connect() {
@@ -190,7 +166,10 @@ export default class P2P<T extends Packable>
         }
     }
 
-    async joinLobby() {
+    async joinLobby({
+        pollInterval = 2 * 1000, // How often to check for new peers
+        maxIdle = 0, // Max time to wait before being kicked
+    } = {}) {
         if (this.joiningRoom)
             this.error(Errors.SYNC_JOIN)
         this.joiningRoom = true
@@ -199,10 +178,18 @@ export default class P2P<T extends Packable>
         await this.connect()
 
         try {
-            await (() => this.ipfs.pubsub.subscribe(this.LOBBY_ID, this.onLobbyMessage, {discover: true}).catch(this.error))()
+            await this.ipfs.pubsub.subscribe(this.LOBBY_ID, this.onLobbyMessage, {discover: true})
             this.inLobby = true
             this.emit(Events.lobbyConnect)
-            this.pollLobby()
+            this.pollLobby(pollInterval)
+
+            // Disconnect peers idling in lobby
+            if (maxIdle) {
+                const handle = setTimeout(() => !this.inGroup && this.disconnect(), maxIdle)
+                const stopIdleCountdown = () => clearTimeout(handle)
+                this.on(Events.disconnected, stopIdleCountdown)
+                this.on(Events.groupReadyInit, stopIdleCountdown)
+            }
         } catch(e) {
             this.error(e)
         } finally {
@@ -403,7 +390,7 @@ export default class P2P<T extends Packable>
      *
      * Doesn't track peers who left and came back.
      */
-    private pollLobby = async () => {
+    private pollLobby = async (pollInterval: number) => {
         if (!this.inLobby)
             return
 
@@ -471,7 +458,7 @@ export default class P2P<T extends Packable>
                 })
             }
 
-            setTimeout(this.pollLobby, this.pollInterval) // quit polling on error
+            setTimeout(this.pollLobby, pollInterval, pollInterval) // quit polling on error
         } catch(originalError) {
             this.error(Errors.POLLING_LOBBY, {originalError})
         }
@@ -523,7 +510,7 @@ export default class P2P<T extends Packable>
             }
 
             if (this.inGroup) // keep polling if there are still peers in group
-                setTimeout(this.pollRoom, this.pollInterval)
+                setTimeout(this.pollRoom, this.peersInRoom ? P2P.ROOM_WAITING_POLL_INTERVAL : P2P.ROOM_READY_POLL_INTERVAL)
             else // no point in staying in an empty room
                 this.leaveRoom()
         } catch(originalError) {

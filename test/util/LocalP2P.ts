@@ -12,10 +12,8 @@ global.addEventListener = () => {}
 export default function createNode({
        repo = `test-data/${RUN_TIME}/${total}`,
        Swarm = ['/ip4/127.0.0.1/tcp/0'],
-       pollInterval = 50,
-       maxIdleTime = 0,
    } = {}) {
-    const node = new P2P(`node-#${++total}`, 'p2p-lobby-local', {repo, Swarm, pollInterval, maxIdleTime})
+    const node = new P2P(`node-#${++total}`, 'p2p-lobby-local', {repo, Swarm})
     peers.add(node)
     return node
 }

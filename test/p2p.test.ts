@@ -4,10 +4,9 @@ import createNode from './util/LocalP2P'
 import {delay, forEvent, forEventWithValue} from './util/util'
 import Errors from '../src/errors'
 import Events from '../src/events'
-import {P2Popts} from '../src/P2P'
 import P2P from '..'
 
-const options: Partial<P2Popts> = {}
+const pollInterval = 50
 let node1: P2P<string>,
     node2: P2P<string>,
     node3: P2P<string>
@@ -31,9 +30,9 @@ describe('Basic P2P Nodes', function () {
     beforeEach(function () {
         // this.timeout(60 * 1000)
 
-        node1 = createNode(options)
-        node2 = createNode(options)
-        node3 = createNode(options)
+        node1 = createNode()
+        node2 = createNode()
+        node3 = createNode()
 
         for(const node of [node1, node2, node3]) {
             // idk why these cast is needed
@@ -69,39 +68,36 @@ describe('Basic P2P Nodes', function () {
         forEvent(node1, Events.error).should.be.fulfilledWith(Errors.SYNC_JOIN)
 
         return Promise.all([
-            node1.joinLobby(),
-            node1.joinLobby(),
+            node1.joinLobby({pollInterval}),
+            node1.joinLobby({pollInterval}),
         ]).should.rejectedWith(Errors.SYNC_JOIN)
     })
 
     describe('Idling', function () {
-        const IDLE_TIME = 100
-        this.timeout(5 * 1000 + 2 * IDLE_TIME)
-
-        this.beforeAll(() => options.maxIdleTime = IDLE_TIME)
-        this.afterAll(() => delete options.maxIdleTime)
+        const maxIdle = 100
+        this.timeout(5 * 1000 + 2 * maxIdle)
 
         it('Kick me from lobby', async () => {
-            await node1.joinLobby()
+            await node1.joinLobby({pollInterval, maxIdle})
             node1.isConnected.should.be.true()
 
             await Promise.all([
                 forEvent(node1, Events.disconnected),
-                delay(IDLE_TIME),
+                delay(maxIdle),
             ])
             node1.isConnected.should.be.false()
         })
 
         it('Leave me in group with peer', async () => {
             await Promise.all([
-                node1.joinLobby(),
-                node2.joinLobby(),
+                node1.joinLobby({pollInterval, maxIdle}),
+                node2.joinLobby({pollInterval, maxIdle}),
             ])
 
             await node1.joinGroup(node2['id'])
             node1.isConnected.should.be.true()
 
-            await delay(IDLE_TIME * 2)
+            await delay(maxIdle * 2)
             node1.isConnected.should.be.true()
         })
     })
@@ -114,8 +110,8 @@ describe('Basic P2P Nodes', function () {
                 forEvent(node1, Events.lobbyJoin),
                 forEvent(node2, Events.lobbyJoin),
 
-                node1.joinLobby(),
-                node2.joinLobby(),
+                node1.joinLobby({pollInterval}),
+                node2.joinLobby({pollInterval}),
             ])
 
             node2['id'].should.eql(id2)
@@ -128,9 +124,9 @@ describe('Basic P2P Nodes', function () {
             const [node1peerIDs] = await Promise.all([
                 forEvent(node1, Events.lobbyJoin, 2),
 
-                node1.joinLobby(),
-                node2.joinLobby(),
-                node3.joinLobby(),
+                node1.joinLobby({pollInterval}),
+                node2.joinLobby({pollInterval}),
+                node3.joinLobby({pollInterval}),
             ])
 
             node1peerIDs.should.containEql(node2['id'])
@@ -158,9 +154,9 @@ describe('Basic P2P Nodes', function () {
                 forEvent(node2, Events.lobbyJoin, 2),
                 forEvent(node3, Events.lobbyJoin, 2),
 
-                node1.joinLobby(),
-                node2.joinLobby(),
-                node3.joinLobby(),
+                node1.joinLobby({pollInterval}),
+                node2.joinLobby({pollInterval}),
+                node3.joinLobby({pollInterval}),
             ])
 
             await Promise.all([
@@ -171,7 +167,7 @@ describe('Basic P2P Nodes', function () {
         })
 
         it.skip('Can\'t send messages in lobby', async () => {
-            await node1.joinLobby()
+            await node1.joinLobby({pollInterval})
             return node1.broadcast('hello world').should.rejectedWith(Errors.MUST_BE_IN_ROOM)
         })
     })
@@ -194,9 +190,9 @@ describe('Basic P2P Nodes', function () {
                 forEvent(node2, Events.lobbyJoin, 2),
                 forEvent(node3, Events.lobbyJoin, 2),
 
-                node1.joinLobby(),
-                node2.joinLobby(),
-                node3.joinLobby(),
+                node1.joinLobby({pollInterval}),
+                node2.joinLobby({pollInterval}),
+                node3.joinLobby({pollInterval}),
             ])
             .then(() => console.log('All nodes are in lobby and know each other'))
             .then(() => Promise.all([
