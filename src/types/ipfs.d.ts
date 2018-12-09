@@ -168,6 +168,7 @@ declare module 'ipfs' {
         }
 
         export type PeerID = string
+        export type RoomID = string
     }
 
     export = Ipfs

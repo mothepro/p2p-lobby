@@ -17,11 +17,7 @@
     "release": "np"
   },
   "unpkg": "dist/umd/bundle.min.js",
-  "files": [
-    "dist",
-    "src",
-    "index.ts"
-  ],
+  "files": ["dist"],
   "dependencies": {
     "ipfs": "^0.32.3",
     "ipfs-repo": "^0.24.0",

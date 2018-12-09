@@ -2,7 +2,7 @@
 /// <reference path="./types/ipfs-repo.d.ts" />
 
 import * as Ipfs from 'ipfs'
-import {Message, PeerID} from 'ipfs'
+import {Message, PeerID, RoomID} from 'ipfs'
 import StrictEventEmitter from 'strict-event-emitter-types'
 import {EventEmitter} from 'events'
 import {Buffer} from 'buffer'
@@ -14,7 +14,6 @@ import Errors from './errors'
 import Events, {EventMap} from './events'
 
 type Constructor<Instance> = { new(...args: any[]): Instance }
-type RoomID = string | PeerID
 
 const enum ConnectionStatus { OFFLINE, READY, DISCONNECTING, CONNECTING, ONLINE }
 
@@ -38,7 +37,7 @@ export default class P2P<T extends Packable = string, U extends Packable = any>
     private readonly allPeers: Map<PeerID, T> = new Map
 
     /** id's of all in lobby */
-    private readonly lobby: Set<PeerID> = new Set
+    private readonly lobbyPeerIDs: Set<PeerID> = new Set
 
     /** id's of all peers and their group leader's id. */
     private readonly allGroups: Map<PeerID, PeerID> = new Map
@@ -85,13 +84,14 @@ export default class P2P<T extends Packable = string, U extends Packable = any>
         this.ipfs.on('ready', () => this.status = ConnectionStatus.READY)
         this.ipfs.on('error', this.error)
 
-        addEventListener('beforeunload', e => {
-            e.preventDefault()
-            this.disconnect()
+        if (typeof addEventListener == 'function')
+            addEventListener('beforeunload', e => {
+                e.preventDefault()
+                this.disconnect()
 
-            // Chrome requires returnValue to null so no prompt appears.
-            return e.returnValue = undefined
-        })
+                // Chrome requires returnValue to null so no prompt appears.
+                return e.returnValue = undefined
+            })
     }
 
     get isConnected() { return this.status == ConnectionStatus.ONLINE || this.status == ConnectionStatus.DISCONNECTING }
@@ -104,11 +104,24 @@ export default class P2P<T extends Packable = string, U extends Packable = any>
 
     get groupPeers()  { return this.peersInSet(this.myGroup) }
 
-    get lobbyPeers()  { return this.peersInSet(this.lobby) }
+    get lobbyPeers()  { return this.peersInSet(this.lobbyPeerIDs) }
 
     get isReady()     { return this.peersInRoom == undefined && this.inRoom }
 
     public getPeerName = (peer: PeerID) => this.allPeers.get(peer)
+
+    /** All the groups made, and the peers in those groups. */
+    public get groups(): ReadonlyMap<PeerID, Set<PeerID>> {
+        const groups = new Map
+        for (const [peer, leader] of this.allGroups)
+            if (leader) {
+                if (groups.has(leader))
+                    groups.get(leader)!.add(peer)
+                else
+                    groups.set(leader, new Set(peer))
+            }
+        return groups
+    }
 
     /** id's of group members */
     private get myGroup(): ReadonlySet<PeerID> {
@@ -155,7 +168,7 @@ export default class P2P<T extends Packable = string, U extends Packable = any>
             await this.leave()
             this.allPeers.clear()
             this.allGroups.clear()
-            this.lobby.clear()
+            this.lobbyPeerIDs.clear()
             this.leader = ''
             try {
                 await this.ipfs.stop()
@@ -209,7 +222,7 @@ export default class P2P<T extends Packable = string, U extends Packable = any>
         if (!this.inLobby)
             this.error(Errors.MUST_BE_IN_LOBBY)
 
-        if (this.lobby.has(peer) && this.allGroups.get(peer) != '' && this.allGroups.get(peer) != peer)
+        if (this.lobbyPeerIDs.has(peer) && this.allGroups.get(peer) != '' && this.allGroups.get(peer) != peer)
             this.error(Errors.LEADER_IN_GROUP)
 
         if (peer) // since they may be leaving a group (peer == '')
@@ -242,7 +255,6 @@ export default class P2P<T extends Packable = string, U extends Packable = any>
             await this.gotoRoom(info) // TODO just listen on broadcast to be dryer
         }
         catch(e) { this.error(e) }
-        finally  { this.joiningRoom = false }
     }
 
     /**
@@ -257,11 +269,14 @@ export default class P2P<T extends Packable = string, U extends Packable = any>
     }
 
     /** Leaves the lobby and the room we are connected to, if any. */
-    public async leave() {
+    async leave() {
         if (this.inLobby)
             try      { await this.ipfs.pubsub.unsubscribe(this.LOBBY_ID, this.onLobbyMessage) }
             catch(e) { this.error(e) }
-            finally  { this.inLobby = false }
+            finally  {
+                this.inLobby = false
+                this.lobbyPeerIDs.clear()
+            }
 
         else if (this.inRoom)
             try      { await this.ipfs.pubsub.unsubscribe(this.roomID as RoomID, this.onRoomMessage) }
@@ -334,7 +349,7 @@ export default class P2P<T extends Packable = string, U extends Packable = any>
             // A peer we don't know introduced themselves
             if (!this.allPeers.has(peer)) {
                 this.allPeers.set(peer, msg.name)
-                this.lobby.add(peer)
+                this.lobbyPeerIDs.add(peer)
                 this.emit(Events.lobbyJoin, peer)
                 this.emit(Events.lobbyChange, {peer, joined: true})
             }
@@ -374,7 +389,7 @@ export default class P2P<T extends Packable = string, U extends Packable = any>
                 // clean lobby of groups we know are leaving
                 for(const [other, leader] of this.allGroups)
                     if(leader == peer) {
-                        this.lobby.delete(other)
+                        this.lobbyPeerIDs.delete(other)
                         this.emit(Events.lobbyLeft, other)
                         this.emit(Events.lobbyChange, {peer: other, joined: false})
                     }
@@ -396,8 +411,8 @@ export default class P2P<T extends Packable = string, U extends Packable = any>
             const updatedPeerList = await this.ipfs.pubsub.peers(this.roomID as RoomID).catch(this.error)
 
             const missingPeers = new Set
-            const peersJoined = updatedPeerList.filter(peer => !this.lobby.has(peer))
-            const peersLeft = [...this.lobby].filter(peer => !updatedPeerList.includes(peer))
+            const peersJoined = updatedPeerList.filter(peer => !this.lobbyPeerIDs.has(peer))
+            const peersLeft = [...this.lobbyPeerIDs].filter(peer => !updatedPeerList.includes(peer))
 
             for (const peer of peersJoined) {
                 if (peer == this.id) continue // don't track self
@@ -407,8 +422,8 @@ export default class P2P<T extends Packable = string, U extends Packable = any>
                     missingPeers.add(peer)
 
                 // we know them, but didn't know they were in the lobby
-                else if (!this.lobby.has(peer)) {
-                    this.lobby.add(peer)
+                else if (!this.lobbyPeerIDs.has(peer)) {
+                    this.lobbyPeerIDs.add(peer)
                     this.emit(Events.lobbyJoin, peer)
                     this.emit(Events.lobbyChange, {peer, joined: true})
                 }
@@ -418,8 +433,8 @@ export default class P2P<T extends Packable = string, U extends Packable = any>
                 if (peer == this.id) continue // don't track self
 
                 // Peer is leaving the lobby
-                if (this.lobby.has(peer)) {
-                    this.lobby.delete(peer)
+                if (this.lobbyPeerIDs.has(peer)) {
+                    this.lobbyPeerIDs.delete(peer)
                     this.emit(Events.lobbyLeft, peer)
                     this.emit(Events.lobbyChange, {peer, joined: false})
                 }

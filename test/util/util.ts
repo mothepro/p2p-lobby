@@ -1,10 +1,6 @@
 import Events, {EventMap} from '../../src/events'
 import P2P from '../..'
 
-// Remove default bind to the `beforeunload` event
-declare const global: NodeJS.Global & { addEventListener: Function }
-global.addEventListener = () => {}
-
 const listeners: WeakMap<P2P, Map<Events, Function>> = new WeakMap
 const RUN_TIME = Date.now()
 let total = 0
