@@ -9,9 +9,8 @@
     "build:prod": "simplifyify index.ts -s p2p -o dist/umd/bundle.min.js --minify",
     "build:demo": "simplifyify demo/demo.ts -o dist/umd/demo.bundle.js --debug --bundle",
     "build": "npm run build:dev && npm run build:prod && npm run build:demo",
-    "mocha": "cross-env TS_NODE_COMPILER_OPTIONS={\\\"preserveConstEnums\\\":true} mocha --exit --require ts-node/register/transpile-only --timeout 180000 test/*.test.ts",
-    "test": "tsc && npm run mocha",
-    "coverage": "nyc -r html -r text-summary -n src/**/*.ts -e .ts npm run mocha",
+    "test": "mocha -r ts-node/register --timeout 180000 --exit test/*.test.ts",
+    "coverage": "nyc -r html -r text-summary -n src/**/*.ts -e .ts npm run test",
     "prerelease": "tsc && npm run build",
     "prepublishOnly": "rimraf dist/package.json",
     "release": "np"
@@ -19,6 +18,7 @@
   "unpkg": "dist/umd/bundle.min.js",
   "files": ["dist"],
   "dependencies": {
+    "fancy-emitter": "0.0.9",
     "ipfs": "^0.32.3",
     "ipfs-repo": "^0.24.0",
     "msgpack-lite": "^0.1.26"
@@ -32,7 +32,7 @@
     "browserify": "^16.2.3",
     "browserify-shim": "^3.8.14",
     "cross-env": "^5.2.0",
-    "mocha": "^5.2.0",
+    "mocha": "^6.1.4",
     "np": "^3.0.4",
     "nyc": "^13.1.0",
     "rimraf": "^2.6.2",

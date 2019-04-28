@@ -1,14 +1,16 @@
-import 'mocha'
 import 'should'
-import {createNode, delay, forEvent, forEventWithValue} from './util/util'
+import {createNode, delay, firstValues} from './util'
 import Errors from '../src/errors'
-import Events from '../src/events'
-import P2P from '..'
+import P2P from '../src/P2P'
 
 const pollInterval = 50
 let node1: P2P,
     node2: P2P,
     node3: P2P
+
+function assertLastError(message: Errors, node: P2P) {
+    node.error.previous.should.resolvedWith(Error(message))
+}
 
 it('Connect & Disconnect Node', async function () {
     // this.timeout(5 * 1000) // wait longer for disconnection
@@ -21,55 +23,45 @@ it('Connect & Disconnect Node', async function () {
 
     await node1.disconnect()
     node1.isConnected.should.be.false()
+    node1.error.count.should.eql(0)
 })
 
 describe('Basic P2P Nodes', function () {
     this.retries(2)
 
-    beforeEach(function () {
+    beforeEach(async function() {
         // this.timeout(60 * 1000)
 
         node1 = createNode()
         node2 = createNode()
         node3 = createNode()
 
-        for(const node of [node1, node2, node3]) {
-            // idk why these cast is needed
-            (node as any).on(Events.error, (e: Error) => { throw e });
-            (node as any).on(Events.disconnected, () => console.log(`${node.name} is diconnected. (${node['id']})`));
-        }
+        for(const node of [node1, node2, node3])
+            node.disconnected.onContinueAfterError(
+                () => console.log(`${node.name} is diconnected. (${node['id']})`),
+                (e: Error) => { throw e })
 
-        return Promise.all([
-            node1.connect(),
-            node2.connect(),
-            node3.connect(),
-        ]).then(() => console.log('All nodes connected.'))
+        await node1.connect()
+        await node2.connect()
+        await node3.connect()
+        console.log('All nodes connected.')
     })
 
-    afterEach(function () {
+    afterEach(async function() {
         // this.timeout(10 * 1000)
 
-        // Don't print that we are remove a specific node
-        node1.removeAllListeners()
-        node2.removeAllListeners()
-        node3.removeAllListeners()
-
-        return Promise.all([
-            node1.disconnect(),
-            node2.disconnect(),
-            node3.disconnect(),
-        ])
-        .catch(e => {}) // swallow
-        .then(() => console.log('All nodes disconnected.'))
+        await node1.disconnect()
+        await node2.disconnect()
+        await node3.disconnect()
+        console.log('All nodes disconnected.')
     })
 
     it('Should block a second connection', async () => {
-        forEvent(node1, Events.error).should.be.fulfilledWith(Errors.SYNC_JOIN)
-
-        return Promise.all([
+        await Promise.race([
             node1.joinLobby({pollInterval}),
             node1.joinLobby({pollInterval}),
-        ]).should.rejectedWith(Errors.SYNC_JOIN)
+        ])
+        assertLastError(Errors.SYNC_JOIN, node1)
     })
 
     describe('Idling', function () {
@@ -79,11 +71,10 @@ describe('Basic P2P Nodes', function () {
         it('Kick me from lobby', async () => {
             await node1.joinLobby({pollInterval, maxIdle})
             node1.isConnected.should.be.true()
+            const willDisconnect = node1.disconnected.next
 
-            await Promise.all([
-                forEvent(node1, Events.disconnected),
-                delay(maxIdle),
-            ])
+            await delay(maxIdle)
+            willDisconnect.should.be.fulfilled()
             node1.isConnected.should.be.false()
         })
 
@@ -105,9 +96,9 @@ describe('Basic P2P Nodes', function () {
         // this.timeout(20 * 1000)
 
         it('2 Nodes Join', async () => {
-            const [[id2], [id1]] = await Promise.all([
-                forEvent(node1, Events.lobbyJoin),
-                forEvent(node2, Events.lobbyJoin),
+            const [id2, id1] = await Promise.all([
+                node1.lobbyJoin.next,
+                node2.lobbyJoin.next,
 
                 node1.joinLobby({pollInterval}),
                 node2.joinLobby({pollInterval}),
@@ -118,18 +109,17 @@ describe('Basic P2P Nodes', function () {
         })
 
         it('Many Nodes Join', async () => {
-            (node1 as any).on(Events.lobbyLeft, () => {throw Error('No peers should be leaving')})
-
-            const [node1peerIDs] = await Promise.all([
-                forEvent(node1, Events.lobbyJoin, 2),
-
+            await Promise.all([
                 node1.joinLobby({pollInterval}),
                 node2.joinLobby({pollInterval}),
                 node3.joinLobby({pollInterval}),
             ])
+            node1.lobbyConnect.count.should.eql(1)
 
-            node1peerIDs.should.containEql(node2['id'])
-            node1peerIDs.should.containEql(node3['id'])
+            const others = await firstValues(node1.lobbyJoin, 2)
+            others.should.containEql(node2['id'])
+            others.should.containEql(node3['id'])
+            node1.lobbyJoin.count.should.eql(2)
 
             const node2name = node1.getPeerName(node2['id']),
                 node3name = node1.getPeerName(node3['id'])
@@ -142,6 +132,7 @@ describe('Basic P2P Nodes', function () {
 
             node2name.should.eql(node2.name)
             node3name.should.eql(node3.name)
+            node1.lobbyLeft.count.should.eql(0)
         })
 
         it('Node Leaving', async function () {
@@ -149,20 +140,28 @@ describe('Basic P2P Nodes', function () {
             this.timeout(20 * 1000)
 
             await Promise.all([
-                forEvent(node1, Events.lobbyJoin, 2),
-                forEvent(node2, Events.lobbyJoin, 2),
-                forEvent(node3, Events.lobbyJoin, 2),
+                firstValues(node1.lobbyJoin, 2),
+                firstValues(node2.lobbyJoin, 2),
+                firstValues(node3.lobbyJoin, 2),
 
                 node1.joinLobby({pollInterval}),
                 node2.joinLobby({pollInterval}),
                 node3.joinLobby({pollInterval}),
             ])
 
-            await Promise.all([
-                forEventWithValue(node1, Events.lobbyLeft, node3['id']),
-                forEventWithValue(node2, Events.lobbyLeft, node3['id']),
+            node1.lobbyJoin.count.should.eql(2)
+            node2.lobbyJoin.count.should.eql(2)
+            node3.lobbyJoin.count.should.eql(2)
+
+            const [n1leaver, n2leaver] = await Promise.all([
+                node1.lobbyLeft.next,
+                node2.lobbyLeft.next,
+
                 node3.disconnect(),
             ])
+
+            n1leaver.should.eql(n2leaver)
+            n2leaver.should.eql(node3['id'])
         })
 
         it.skip('Can\'t send messages in lobby', async () => {
@@ -175,43 +174,42 @@ describe('Basic P2P Nodes', function () {
         // this.timeout(10 * 1000) // for readying up
 
         // Resolves once all nodes are ready in node1's room.
-        let allReady: Promise<any[]> // actually [void, void, void]
+        let allReady: Promise<[void, void, void]>
 
-        beforeEach(function () {
+        beforeEach(async function () {
             // this.timeout(120 * 1000)
 
-            return Promise.all([
-                forEvent(node1, Events.lobbyConnect),
-                forEvent(node2, Events.lobbyConnect),
-                forEvent(node3, Events.lobbyConnect),
-
-                forEvent(node1, Events.lobbyJoin, 2),
-                forEvent(node2, Events.lobbyJoin, 2),
-                forEvent(node3, Events.lobbyJoin, 2),
+            await Promise.all([
+                node1.lobbyConnect.next,
+                node2.lobbyConnect.next,
+                node3.lobbyConnect.next,
+                
+                firstValues(node1.lobbyJoin, 2),
+                firstValues(node2.lobbyJoin, 2),
+                firstValues(node3.lobbyJoin, 2),
 
                 node1.joinLobby({pollInterval}),
                 node2.joinLobby({pollInterval}),
                 node3.joinLobby({pollInterval}),
             ])
-            .then(() => console.log('All nodes are in lobby and know each other'))
-            .then(() => Promise.all([
-                forEvent(node1, Events.groupJoin, 2),
-                forEvent(node2, Events.groupJoin, 2),
-                forEvent(node3, Events.groupJoin, 2),
+            console.log('All nodes are in lobby and know each other')
+
+            await Promise.all([
+                firstValues(node1.groupJoin, 2),
+                firstValues(node2.groupJoin, 2),
+                firstValues(node3.groupJoin, 2),
 
                 node2.joinGroup(node1['id']),
                 node3.joinGroup(node1['id']),
-            ]))
-            .catch(err => console.log('error', err))
-            .then(() => {
-                // Just set a broader scoped var, don't wait for anything
-                allReady = Promise.all([
-                    forEvent(node1, Events.groupReady),
-                    forEvent(node2, Events.groupReady),
-                    forEvent(node3, Events.groupReady),
-                ])
-                console.log('`node2` & `node3` are connected to `node1`\'s group')
-            })
+            ])
+            console.log('`node2` & `node3` are connected to `node1`\'s group')
+
+            // Just set a broader scoped var, don't wait for anything
+            allReady = Promise.all([
+                node1.groupReady.next,
+                node2.groupReady.next,
+                node3.groupReady.next,
+            ])
         })
 
         it('Ready up', async () => {
@@ -223,13 +221,17 @@ describe('Basic P2P Nodes', function () {
             // Here we can not use a complex value since it has a different reference when unpacked
             const info = 'hello world'
 
-            await Promise.all([
-                forEventWithValue(node1, Events.groupReadyInit, info),
-                forEventWithValue(node2, Events.groupReadyInit, info),
-                forEventWithValue(node3, Events.groupReadyInit, info),
+            const [one, two, three] = await Promise.all([
+                node1.groupReadyInit.next,
+                node2.groupReadyInit.next,
+                node3.groupReadyInit.next,
 
                 node1.readyUp(info),
             ])
+
+            one.should.eql(info)
+            two.should.eql(info)
+            three.should.eql(info)
         })
 
         it('Generate same random number', async () => {
@@ -250,29 +252,16 @@ describe('Basic P2P Nodes', function () {
             await node1.readyUp()
             await allReady
 
-            const [[msg1, msg2]] = await Promise.all([
-                forEvent(node3, Events.data, 2),
-
+            await Promise.all([
                 node2.broadcast('hello all'),
                 node1.broadcast('what\'s up peers'),
             ])
-
-            const msgs = [
-                {
-                    peer: node2['id'],
-                    data: 'hello all',
-                },
-                {
-                    peer: node1['id'],
-                    data: 'what\'s up peers',
-                }
-            ]
-
-            if(typeof msg1 == 'undefined' || typeof msg2 == 'undefined')
-                throw Error('Nothing was emitted with `node3.on(Events.data, void)`')
-
-            msg1.should.be.oneOf(msgs)
-            msg2.should.be.oneOf(msgs)
+            
+            for (const { peer, data } of await firstValues(node3.data, 2)) {
+                peer.should.be.oneOf(node1['id'], node2['id'])
+                data.should.be.oneOf('hello all', 'what\'s up peers')
+            }
+            node3.data.count.should.eql(2)
         })
     })
 })
