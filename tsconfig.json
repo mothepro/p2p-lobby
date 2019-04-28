@@ -1,3 +1,4 @@
+// TODO: remove rimraf from package.json
 {
   "compilerOptions": {
     "module": "commonjs",
@@ -12,9 +13,5 @@
   },
   "files": [
     "index.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist"
   ]
 }

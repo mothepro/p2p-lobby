@@ -1,14 +1,12 @@
-import 'mocha'
 import 'should'
 import {Buffer} from 'buffer'
-import {pack, PackableInst, unpack} from '../src/packer'
-import {Packer} from '..'
+import Packer, {pack, PackableInst, unpack} from '../src/packer'
 
 describe('Packer', () => {
     it('Complex', () => {
         const data = {
-            'int': 1,
-            'float': 0.5,
+            'int': -1769510356,
+            'float': 5867586777690.57897973234567,
             'boolean': true,
             'null': null,
             'string': 'foo bar',
