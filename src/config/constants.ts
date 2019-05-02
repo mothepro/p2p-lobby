@@ -1,11 +1,11 @@
 import {PeerID, RoomID} from 'ipfs'
 import {version} from '../../package.json'
-import Errors from './errors'
+import Errors, {buildError} from './errors'
+import ipfs, {IPFSOptions, makeIPFS} from '../p2p/ipfs'
 
 /** The values here hold the general state of the p2p node and IPFS peers. */
 
-// TODO infer from init()
-type NameType = string
+export type NameType = typeof initialize extends (name: infer U, ...args: any[]) => any ? U : never
 
 /** Possible status' of the p2p node. */
 export const enum ConnectionStatus {
@@ -32,7 +32,7 @@ export const ROOM_READY_POLL_INTERVAL = 15 * 1000
 
 /** The p2p node's status. */
 export let status = ConnectionStatus.OFFLINE
-export function setStatus(newStatus: ConnectionStatus) { status = newStatus }
+export const setStatus = (newStatus: ConnectionStatus) => status = newStatus
 
 /** Whether or not the node is connected to the network. */
 export const isConnected = () =>
@@ -64,19 +64,9 @@ export function setId(newId: PeerID) { id = newId }
 
 /** Name of my p2p node. */
 export let name: NameType
-export function setName(newName: NameType) {
-    if (name)
-        throw Error(Errors.NAME_ALREADY_SET)
-    name = newName
-}
 
 /** The Room ID of the lobby */
 export let LOBBY_ID: RoomID
-export function setLobbyId(pkg: string) {
-    if (name)
-        throw Error(Errors.LOBBY_ID_ALREADY_SET)
-    LOBBY_ID = `${pkg}_lobby_${version}`
-}
 
 /** Whether or not the current leader of a group. */
 export const isLeader = () => isConnected() && id == leaderId
@@ -116,4 +106,17 @@ function peersInSet(set: ReadonlySet<PeerID>): Map<PeerID, NameType> {
     for (const peerId of set)
         peers.set(peerId, getPeerName(peerId)) // should never be null
     return peers
+}
+
+/** Create a P2P Node if one hasn't been created already. */
+export function initialize<T>(myName: T, pkg: string, ipfsOptions?: Partial<IPFSOptions>) {
+    if (name || LOBBY_ID)
+        throw buildError(Errors.NO_REINITIALIZE)
+
+    name = myName
+    LOBBY_ID = `${pkg}_lobby_${version}`
+
+    if (!ipfs)
+        makeIPFS({...ipfsOptions, pkg})
+            .on('ready', () => setStatus(ConnectionStatus.READY))
 }
