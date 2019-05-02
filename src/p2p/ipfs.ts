@@ -33,7 +33,7 @@ export function makeIPFS({
         config: {Addresses: {Swarm}},
         EXPERIMENTAL: {pubsub: true},
     })
+
     // TODO remove this
     ipfs.on('error', error.activate)
-    return ipfs
 }

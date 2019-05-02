@@ -118,5 +118,4 @@ export function initialize<T>(myName: T, pkg: string, ipfsOptions?: Partial<IPFS
 
     if (!ipfs)
         makeIPFS({...ipfsOptions, pkg})
-            .on('ready', () => setStatus(ConnectionStatus.READY))
 }
