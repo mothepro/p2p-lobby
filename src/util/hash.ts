@@ -1,5 +1,5 @@
 import {PeerID} from 'ipfs'
-import {groupPeerIDs, id} from '../p2p/config'
+import {groupPeerIDs, id} from '../config/constants'
 
 // Alphabet of Base58 characters used in peer id's
 const ALPHABET = '0123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
