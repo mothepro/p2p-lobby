@@ -1,6 +1,9 @@
 import Emitter from 'fancy-emitter'
 import {PeerID} from 'ipfs'
 
+// TODO infer from readyUp()
+type ReadyUpType = any
+
 /** Some error sas throw... */
 // TODO Replace with deactivations.
 export const error = new Emitter<Error>()
@@ -37,6 +40,6 @@ export const groupReady = new Emitter
 
 /** The group leader has requested to move group members to a private room */
 // TODO update with the proper type
-export const groupReadyInit = new Emitter<any>()
+export const groupReadyInit = new Emitter<ReadyUpType>()
 /** Connected to private room which will soon have all group members */
 export const groupConnect = new Emitter
