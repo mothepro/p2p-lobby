@@ -7,7 +7,7 @@ const ALPHABET = '0123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 /** Generates a number based on a list of strings. */
 function hash(peerIDs: PeerID[]) {
     let allIdHash = 1
-    let idHash
+    let idHash: number
 
     for (const id of peerIDs.sort()) {
         idHash = 0

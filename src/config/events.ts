@@ -1,8 +1,6 @@
 import Emitter from 'fancy-emitter'
 import {PeerID} from 'ipfs'
-
-// TODO infer from readyUp()
-type ReadyUpType = any
+import { lobbyPeerIDs, allPeerGroups, leaderId } from './constants'
 
 /** Some error sas throw... */
 // TODO Replace with deactivations.
@@ -39,7 +37,17 @@ export const groupChange = new Emitter<{peer: PeerID, joined: boolean}>()
 export const groupReady = new Emitter
 
 /** The group leader has requested to move group members to a private room */
-// TODO update with the proper type
-export const groupReadyInit = new Emitter<ReadyUpType>()
+export const groupReadyInit = new Emitter<any>()
 /** Connected to private room which will soon have all group members */
 export const groupConnect = new Emitter
+
+// The following emitters can make smart changes
+lobbyJoin.onContinueAfterError(peer => lobbyChange.activate({ peer, joined: true }))
+lobbyLeft.onContinueAfterError(peer => lobbyChange.activate({ peer, joined: false }))
+groupJoin.onContinueAfterError(peer => groupChange.activate({ peer, joined: true }))
+groupLeft.onContinueAfterError(peer => groupChange.activate({ peer, joined: false }))
+
+// update peers in the lobby
+lobbyChange.onContinueAfterError(({ peer, joined }) => (joined ? lobbyPeerIDs.add : lobbyPeerIDs.delete)(peer))
+// set a peer in my group, or remove them from any group in general groups
+groupChange.onContinueAfterError(({ peer, joined }) => allPeerGroups.set(peer, joined ? leaderId : ''))
