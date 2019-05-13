@@ -30,6 +30,7 @@ import {seedInt} from '../util/rng'
 import ipfs from './ipfs'
 import broadcast from './broadcast'
 import pollRoom from './pollRoom'
+import {leaveRoom} from './disconnect'
 
 /**
  * An emitter that should be activated when a message is recieved.
@@ -60,7 +61,7 @@ const msgEmitter = new Emitter<Message>()
                                 throw buildError(Errors.LIST_MISMATCH)
                             seedInt(data.hash)
                             groupReadyInit.activate(data.info)
-                            await ipfs.pubsub.unsubscribe(LOBBY_ID, msgEmitter.activate)
+                            await leaveRoom(LOBBY_ID)
                             await ipfs.pubsub.subscribe(leaderId, msgEmitter.activate, { discover: true })
                             groupConnect.activate()
                             setStatus(ConnectionStatus.WAITING_FOR_GROUP)

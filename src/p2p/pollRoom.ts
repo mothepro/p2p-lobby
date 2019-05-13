@@ -13,6 +13,7 @@ import milliseconds from '../util/delay'
 import ipfs from './ipfs'
 import {PeerID, RoomID} from 'ipfs'
 import {groupLeft, groupReady} from '../config/events'
+import {leaveRoom} from './disconnect'
 
 function checkForLeavers(actualPeerList: PeerID[], expectedPeerList: ReadonlySet<PeerID>) {
     for (const peer of [...expectedPeerList].filter(peer => !actualPeerList.includes(peer)))
@@ -57,6 +58,7 @@ export default async function() {
                         throw buildError(Errors.UNEXPECTED_STATUS, {status})
                 }
             } catch (cause) {
+                await leaveRoom()
                 throw buildError(Errors.POLLING_ROOM, { cause, roomID: roomID() })
             }
 }
