@@ -1,6 +1,6 @@
 import Emitter from 'fancy-emitter'
 import {PeerID} from 'ipfs'
-import { lobbyPeerIDs, allPeerGroups, leaderId } from './constants'
+import {allPeerGroups, ConnectionStatus, inGroup, leaderId, lobbyPeerIDs, resetLeaderId, setStatus} from './constants'
 
 /** Some error sas throw... */
 // TODO Replace with deactivations.
@@ -45,9 +45,20 @@ export const groupConnect = new Emitter
 lobbyJoin.onContinueAfterError(peer => lobbyChange.activate({ peer, joined: true }))
 lobbyLeft.onContinueAfterError(peer => lobbyChange.activate({ peer, joined: false }))
 groupJoin.onContinueAfterError(peer => groupChange.activate({ peer, joined: true }))
-groupLeft.onContinueAfterError(peer => groupChange.activate({ peer, joined: false }))
+groupLeft.onContinueAfterError(peer => {
+    groupChange.activate({peer, joined: false})
+    if (!inGroup())
+        groupDone.activate()
+})
 
-// update peers in the lobby
+// Update peers in the lobby
 lobbyChange.onContinueAfterError(({ peer, joined }) => (joined ? lobbyPeerIDs.add : lobbyPeerIDs.delete)(peer))
-// set a peer in my group, or remove them from any group in general groups
+
+// Set a peer in my group, or remove them from any group in general groups
 groupChange.onContinueAfterError(({ peer, joined }) => allPeerGroups.set(peer, joined ? leaderId : ''))
+
+// Update status when group is ready
+groupReady.onContinueAfterError(() => setStatus(ConnectionStatus.IN_ROOM))
+
+// Clear group
+groupDone.onContinueAfterError(() => resetLeaderId())
