@@ -45,7 +45,7 @@ async function handleReadyUp(peer: PeerID, data: ReadyUpInfo<any>) {
             seedInt(data.hash)
             groupReadyInit.activate(data.info)
             await leaveRoom(LOBBY_ID)
-            await ipfs.pubsub.subscribe(leaderId, listener, { discover: true })
+            await ipfs.pubsub.subscribe(leaderId, msgListener, { discover: true })
             groupConnect.activate()
             setStatus(ConnectionStatus.WAITING_FOR_GROUP)
             pollRoom()
@@ -103,7 +103,7 @@ async function handleIntroduction(peer: PeerID, data: Introduction<NameType>) {
  * Listener for data from any peer.
  * *This **includes** messages that from self.*
  */
-export async function handle(peer: PeerID, data: any) {
+export async function handleMessage(peer: PeerID, data: any) {
     switch (status) {
         case ConnectionStatus.IN_ROOM:
             dataEmitter.activate({ data, peer })
@@ -130,8 +130,8 @@ export async function handle(peer: PeerID, data: any) {
  * Listener for data sent over the wire.
  * *This does **not** include messages that from self.*
  */
-export default async function listener({ from, data }: Message) {
+export default async function msgListener({ from, data }: Message) {
     const peer = from.toString()
     if (peer != id)
-        return handle(peer, unpack(data))
+        return handleMessage(peer, unpack(data))
 }

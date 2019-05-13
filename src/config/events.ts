@@ -33,13 +33,12 @@ export const groupJoin = new Emitter<PeerID>()
 export const groupLeft = new Emitter<PeerID>()
 /** A peer has joined or left my group */
 export const groupChange = new Emitter<{peer: PeerID, joined: boolean}>()
-/** The group and all members are ready in shared room */
-export const groupReady = new Emitter
-
 /** The group leader has requested to move group members to a private room */
 export const groupReadyInit = new Emitter<any>()
 /** Connected to private room which will soon have all group members */
 export const groupConnect = new Emitter
+/** The group and all members are ready in shared room */
+export const groupReady = new Emitter
 
 // The following emitters can make smart changes
 lobbyJoin.onContinueAfterError(peer => lobbyChange.activate({ peer, joined: true }))

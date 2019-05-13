@@ -12,12 +12,12 @@ import {
     setStatus,
     setId,
 } from '../config/constants'
-import listener from './listener'
+import msgListener from './messageListener'
 
 /** Leaves a room we are connected to, if any. */
 export async function leaveRoom(roomId = roomID()) {
     if (roomId)
-        return ipfs.pubsub.unsubscribe(roomId, listener)
+        return ipfs.pubsub.unsubscribe(roomId, msgListener)
             .then(() => {
                 resetLeaderId('')
                 setStatus(ConnectionStatus.ONLINE)
