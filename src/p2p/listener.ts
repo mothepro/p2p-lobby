@@ -1,18 +1,39 @@
-import { Message, PeerID } from 'ipfs'
+import {Message} from 'ipfs'
 import Emitter from 'fancy-emitter'
-import { status, ConnectionStatus, id, roomID, leaderId, lobbyPeerIDs, allPeerGroups, setStatus, allPeerNames, LOBBY_ID, resetLeaderId } from '../config/constants'
-import Errors, { buildError } from '../config/errors'
-import {data as dataEmitter, lobbyLeft, groupReadyInit, lobbyJoin, groupConnect, groupStart, groupJoin} from '../config/events'
-import { unpack } from '../packer'
+import {
+    allPeerGroups,
+    allPeerNames,
+    ConnectionStatus,
+    id,
+    leaderId,
+    LOBBY_ID,
+    lobbyPeerIDs,
+    resetLeaderId,
+    roomID,
+    setStatus,
+    status,
+} from '../config/constants'
+import Errors, {buildError} from '../config/errors'
+import {
+    data as dataEmitter,
+    groupConnect,
+    groupJoin,
+    groupReadyInit,
+    groupStart,
+    lobbyJoin,
+    lobbyLeft,
+} from '../config/events'
+import {unpack} from '../packer'
 import hash from '../util/hash'
-import { ReadyUpInfo, Introduction } from '../messages'
-import { seedInt } from '../util/rng'
+import {Introduction, ReadyUpInfo} from '../messages'
+import {seedInt} from '../util/rng'
 import ipfs from './ipfs'
 import broadcast from './broadcast'
+import pollRoom from './pollRoom'
 
 /**
  * An emitter that should be activated when a message is recieved.
- * 
+ *
  * *This includes messages that **our node** sends.*
  */
 const msgEmitter = new Emitter<Message>()
@@ -21,14 +42,14 @@ const msgEmitter = new Emitter<Message>()
     for await (const { from, data: raw } of msgEmitter.future) {
         const peer = from.toString(),
             data = peer == id
-                ? raw // no need to unpack data not sent over the wire 
+                ? raw // no need to unpack data not sent over the wire
                 : unpack(raw)
 
         switch (status) {
             case ConnectionStatus.IN_ROOM:
                 dataEmitter.activate({ data, peer })
                 break
-            
+
             case ConnectionStatus.IN_LOBBY:
                 if (data instanceof ReadyUpInfo) {
                     if (peer == leaderId) {
@@ -42,9 +63,8 @@ const msgEmitter = new Emitter<Message>()
                             await ipfs.pubsub.unsubscribe(LOBBY_ID, msgEmitter.activate)
                             await ipfs.pubsub.subscribe(leaderId, msgEmitter.activate, { discover: true })
                             groupConnect.activate()
-                            this.peersInRoom = new Set
-                            this.pollRoom()
                             setStatus(ConnectionStatus.WAITING_FOR_GROUP)
+                            pollRoom()
                         } catch (e) {
                             setStatus(ConnectionStatus.IN_LOBBY)
                             throw e
@@ -57,14 +77,14 @@ const msgEmitter = new Emitter<Message>()
                                 allPeerGroups
                                 lobbyLeft.activate(other)
                             }
-                    
+
                     break
 
                 } else if (data instanceof Introduction) {
                     // we don't care about our own Introductions in the lobby
                     if (peer == id)
                         break
-                    
+
                     // Introduce ourselves if peer we already know who wants to meet us.
                     // (Otherwise the poller will handle it)
                     if (allPeerNames.has(peer) && data.infoRequest)
@@ -102,7 +122,7 @@ const msgEmitter = new Emitter<Message>()
                     break
                 }
                 // Intentional fall-thru
-            
+
             default:
                 throw buildError(Errors.UNEXPECTED_MESSAGE, { peer, data, roomID: roomID()! })
         }

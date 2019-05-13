@@ -10,6 +10,7 @@ const enum Errors {
     LEADER_IN_GROUP     = 'The peer youre trying to join is already in a different group',
     POLLING_LOBBY       = 'An error was encountered while polling peers in the lobby',
     POLLING_ROOM        = 'An error was encountered while polling peers in a room',
+    UNEXPECTED_STATUS   = 'The current operation can be completed at this state',
 }
 
 export default Errors // Can't be all in one line :(

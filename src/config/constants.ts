@@ -32,6 +32,8 @@ export const ROOM_READY_POLL_INTERVAL = 15 * 1000
 
 /** The p2p node's status. */
 export let status = ConnectionStatus.OFFLINE
+
+// TODO Possibly use the `typestate` package to ensure the status is always sane.
 export const setStatus = (newStatus: ConnectionStatus) => status = newStatus
 
 /** Whether or not the node is connected to the network. */
