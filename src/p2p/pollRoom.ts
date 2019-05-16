@@ -17,7 +17,7 @@ import {leaveRoom} from './disconnect'
 
 function checkForLeavers(actualPeerList: PeerID[], expectedPeerList: ReadonlySet<PeerID>) {
     for (const peer of [...expectedPeerList].filter(peer => !actualPeerList.includes(peer)))
-        // Ignore self or random peer leaving
+        // Ignore self or unknown peer leaving
         if (expectedPeerList.has(peer) && peer != id)
             groupLeft.activate(peer)
 }
@@ -27,7 +27,7 @@ export default async function() {
 
         while (inGroup())
             try {
-                const updatedPeerList = await ipfs.pubsub.peers(roomID() as RoomID)
+                const updatedPeerList = await ipfs.pubsub.peers(roomID())
 
                 switch (status) {
                     case ConnectionStatus.WAITING_FOR_GROUP:

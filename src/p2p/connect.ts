@@ -1,6 +1,6 @@
 import ipfs from './ipfs'
 import {connected} from '../config/events'
-import {ConnectionStatus, setId, setStatus, status} from '../config/constants'
+import {ConnectionStatus, setId, setStatus, status, resetLeaderId} from '../config/constants'
 
 // This should enable OFFLINE -> READY in same block
 ipfs.on('ready', () => setStatus(ConnectionStatus.READY))
@@ -25,6 +25,7 @@ export default async function () {
             await ipfs.start()
             const { id } = await ipfs.id()
             setId(id)
+            resetLeaderId() // Make a new group with me as leader
             connected.activate()
         }
     } catch (e) {

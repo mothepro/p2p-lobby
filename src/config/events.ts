@@ -1,6 +1,6 @@
 import Emitter from 'fancy-emitter'
 import {PeerID} from 'ipfs'
-import {allPeerGroups, ConnectionStatus, inGroup, leaderId, lobbyPeerIDs, resetLeaderId, setStatus} from './constants'
+import {allPeerGroups, ConnectionStatus, inGroup, leaderId, lobbyPeerIDs, resetLeaderId, setStatus, groupPeerIDs} from './constants'
 
 /** Some error sas throw... */
 // TODO Replace with deactivations.
@@ -61,3 +61,9 @@ groupReady.onContinueAfterError(() => setStatus(ConnectionStatus.IN_ROOM))
 
 // Clear group
 groupDone.onContinueAfterError(() => resetLeaderId())
+
+// Activate `join` for all peer's in group after starting
+groupStart.onContinueAfterError(() => {
+    for (const peer of groupPeerIDs())
+        groupJoin.activate(peer)
+})

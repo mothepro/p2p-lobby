@@ -56,13 +56,13 @@ export const lobbyPeerIDs: Set<PeerID> = new Set
 /** ID's of all peers in lobby and their name. */
 export const lobbyPeerNames = () => peersInSet(lobbyPeerIDs)
 
-/** ID of group leader. */
-export let leaderId: PeerID = ''
-export function resetLeaderId(newId: PeerID = '') { leaderId = newId }
-
 /** ID of my p2p node. */
 export let id: PeerID = ''
 export function setId(newId: PeerID) { id = newId }
+
+/** ID of group leader. */
+export let leaderId: PeerID = id
+export function resetLeaderId(newId: PeerID = id) { leaderId = newId }
 
 /** Name of my p2p node. */
 export let name: NameType
