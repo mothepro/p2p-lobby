@@ -11,7 +11,7 @@ import {
 } from '../config/constants'
 import milliseconds from '../util/delay'
 import ipfs from './ipfs'
-import {PeerID, RoomID} from 'ipfs'
+import {PeerID} from 'ipfs'
 import {groupLeft, groupReady} from '../config/events'
 import {leaveRoom} from './disconnect'
 
@@ -31,20 +31,21 @@ export default async function() {
 
                 switch (status) {
                     case ConnectionStatus.WAITING_FOR_GROUP:
-                        const peersJoined = updatedPeerList.filter(peer => !peersInRoom!.has(peer))
+                        const peersJoined = updatedPeerList.filter(peer => !peersInRoom.has(peer))
 
                         for (const peer of peersJoined) {
                             if (peer == id) continue // don't track self
 
-                            if (groupPeerIDs().has(peer))
-                                peersInRoom.add(peer)
-                            else
-                                throw buildError(Errors.UNEXPECTED_PEER, {peer})
+                            if (!groupPeerIDs().has(peer))
+                                throw buildError(Errors.UNEXPECTED_PEER, { peer })
+                            
+                            peersInRoom.add(peer)
                         }
 
                         // All the peers who could make it are finally here.
                         if (groupPeerIDs().size == peersInRoom.size)
                             groupReady.activate()
+
                         checkForLeavers(updatedPeerList, peersInRoom)
                         await milliseconds(ROOM_WAITING_POLL_INTERVAL)
                         break

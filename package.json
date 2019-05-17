@@ -20,7 +20,7 @@
     "dist"
   ],
   "dependencies": {
-    "fancy-emitter": "0.0.9",
+    "fancy-emitter": "^0.1.2",
     "ipfs": "^0.32.3",
     "ipfs-repo": "^0.24.0",
     "msgpack-lite": "^0.1.26"
