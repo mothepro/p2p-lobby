@@ -1,16 +1,16 @@
-import { status, ConnectionStatus, isLeader } from '../config/constants'
-import Errors, { buildError } from '../config/errors'
+import {ConnectionStatus, isLeader, ReadyUpType, status} from '../config/constants'
+import Errors, {buildError} from '../config/errors'
 import hash from '../util/hash'
-import { ReadyUpInfo } from '../messages'
+import {ReadyUpInfo} from '../messages'
 import broadcast from './broadcast'
 
 /**
  * Safely broadcasts to all member's of the group that
  * they need to move to the group leader's room.
- * 
+ *
  * Additional info can be sent along as well.
  */
-export default function(info?: any) {
+export default function(info?: ReadyUpType) {
     if (status != ConnectionStatus.IN_LOBBY)
         throw buildError(Errors.MUST_BE_IN_LOBBY)
 

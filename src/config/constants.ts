@@ -3,9 +3,10 @@ import {version} from '../../package.json'
 import Errors, {buildError} from './errors'
 import ipfs, {IPFSOptions, makeIPFS} from '../p2p/ipfs'
 
-/** The values here hold the general state of the p2p node and IPFS peers. */
+export type NameType = any
+export type ReadyUpType = any
 
-export type NameType = typeof initialize extends (name: infer U, ...args: any[]) => any ? U : never
+/* The values here hold the general state of the p2p node and IPFS peers. */
 
 /** Possible status' of the p2p node. */
 export const enum ConnectionStatus {

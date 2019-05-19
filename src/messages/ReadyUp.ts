@@ -1,4 +1,5 @@
 import register, {PackableInst} from '../packer'
+import {ReadyUpType} from '../config/constants'
 
 /**
  * The group leader is ready to start.
@@ -8,15 +9,15 @@ import register, {PackableInst} from '../packer'
 export default class ReadyUp implements PackableInst {
     constructor(
         public hash: number,
-        public info?: any,
+        public info?: ReadyUpType,
     ) {}
 
-    static pack   = (isnt: ReadyUp) =>
-        isnt.info == undefined
-            ? isnt.hash
-            : [isnt.hash, isnt.info]
+    static pack   = ({hash, info}: ReadyUp) =>
+        info == undefined
+            ? hash
+            : [hash, info]
 
-    static unpack = (hash: number | [number, any]) =>
+    static unpack = (hash: number | [number, ReadyUpType]) =>
         typeof hash == 'number'
             ? new ReadyUp(hash)
             : new ReadyUp(hash[0], hash[1])
