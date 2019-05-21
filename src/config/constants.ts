@@ -92,9 +92,8 @@ export function allGroups(): Map<PeerID, Set<PeerID>> {
         const members = new Set
 
         for (const peer of peers)
-            if (leader == allGroupRequests.get(peer))
+            if (allGroupRequests.has(peer) && leader == allGroupRequests.get(peer))
                 members.add(peer)
-
 
         // If there are members add the leader and return the group
         if (members.size)
