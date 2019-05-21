@@ -1,19 +1,8 @@
 import ipfs from './ipfs'
-import { roomID, ConnectionStatus, status, isLeader, id } from '../config/constants'
-import Errors, { buildError } from '../config/errors'
-import hash from '../util/hash'
-import { ReadyUpInfo } from '../messages'
-import { pack } from '../packer'
-import {handleMessage} from './messageListener'
-
-/**
- * Broadcast data to all peers in the room.
- * All data from registered objects will be `pack`ed first.
- */
-async function broadcast(data: any) {
-    return ipfs.pubsub.publish(roomID()!, pack(data) as Buffer)
-        .catch(e => Promise.reject(buildError(e, { data, roomID: roomID() })))
-}
+import {pack} from '../packer'
+import {ConnectionStatus, myID, roomID, status} from '../config/constants'
+import {buildError} from '../config/errors'
+import {data as dataEmitter} from '../config/events'
 
 /**
  * `Pack`s and Broadcasts data to all peers in the room.
@@ -23,8 +12,12 @@ async function broadcast(data: any) {
  */
 export default async function(data: any) {
     if (roomID())
-        return Promise.all([
-            broadcast(data),
-            handleMessage(id, data),
-        ])
+        try {
+            await ipfs.pubsub.publish(roomID()!, pack(data) as Buffer)
+
+            if (status == ConnectionStatus.IN_ROOM)
+                dataEmitter.activate({ data, peer: myID })
+        } catch (e) {
+            throw buildError(e, { data, roomID: roomID() })
+        }
 }

@@ -1,5 +1,5 @@
 import register, {PackableInst} from '../packer'
-import {name as myName, NameType} from '../config/constants'
+import {myName, NameType} from '../config/constants'
 
 /**
  * This is a confirmation that a peer is in the lobby.

@@ -58,21 +58,21 @@ export const lobbyPeerIDs: Set<PeerID> = new Set
 export const lobbyPeerNames = () => peersInSet(lobbyPeerIDs)
 
 /** ID of my p2p node. */
-export let id: PeerID = ''
-export function setId(newId: PeerID) { id = newId }
+export let myID: PeerID = ''
+export function setId(id: PeerID) { myID = id }
 
 /** ID of group leader. */
-export let leaderId: PeerID = id
-export function resetLeaderId(newId: PeerID = id) { leaderId = newId }
+export let leaderId: PeerID = myID
+export function resetLeaderId(id: PeerID = myID) { leaderId = id }
 
 /** Name of my p2p node. */
-export let name: NameType
+export let myName: NameType
 
 /** The Room ID of the lobby */
 export let LOBBY_ID: RoomID
 
 /** Whether or not the current leader of a group. */
-export const isLeader = () => isConnected() && id == leaderId
+export const isLeader = () => isConnected() && myID == leaderId
 
 /** Whether or not in a group. */
 export const inGroup = () => !!groupPeerIDs().size
@@ -113,10 +113,10 @@ function peersInSet(set: ReadonlySet<PeerID>): Map<PeerID, NameType> {
 
 /** Create a P2P Node if one hasn't been created already. */
 export function initialize<T>(myName: T, pkg: string, ipfsOptions?: Partial<IPFSOptions>) {
-    if (name || LOBBY_ID)
+    if (myName || LOBBY_ID)
         throw buildError(Errors.NO_REINITIALIZE)
 
-    name = myName
+    myName = myName
     LOBBY_ID = `${pkg}_lobby_${version}`
 
     if (!ipfs)

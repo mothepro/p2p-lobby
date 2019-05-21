@@ -4,9 +4,9 @@ import {
     allPeerGroups,
     ConnectionStatus,
     groupPeerIDs,
-    id,
     leaderId,
     lobbyPeerIDs,
+    myID,
     resetLeaderId,
     status,
 } from '../config/constants'
@@ -17,7 +17,7 @@ import broadcast from './broadcast'
 /** Joins a new group. */
 // TODO: Return if successful and allow confirmation
 export default async function(peer: PeerID) {
-    if (peer == leaderId || peer == id)
+    if (peer == leaderId || peer == myID)
         return
 
     if (status != ConnectionStatus.IN_LOBBY)

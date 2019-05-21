@@ -1,5 +1,5 @@
 import {PeerID} from 'ipfs'
-import {groupPeerIDs, id} from '../config/constants'
+import {groupPeerIDs, myID} from '../config/constants'
 
 // Alphabet of Base58 characters used in peer id's
 const ALPHABET = '0123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
@@ -24,4 +24,4 @@ function hash(peerIDs: PeerID[]) {
  * Generates a number based on the peers connected to the current room.
  * Meaning this value should be consistent with all other peers as well.
  */
-export default () => hash([...groupPeerIDs(), id])
+export default () => hash([...groupPeerIDs(), myID])

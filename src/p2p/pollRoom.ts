@@ -2,8 +2,8 @@ import Errors, {buildError} from '../config/errors'
 import {
     ConnectionStatus,
     groupPeerIDs,
-    id,
     inGroup,
+    myID,
     ROOM_READY_POLL_INTERVAL,
     ROOM_WAITING_POLL_INTERVAL,
     roomID,
@@ -18,7 +18,7 @@ import {leaveRoom} from './disconnect'
 function checkForLeavers(actualPeerList: PeerID[], expectedPeerList: ReadonlySet<PeerID>) {
     for (const peer of [...expectedPeerList].filter(peer => !actualPeerList.includes(peer)))
         // Ignore self or unknown peer leaving
-        if (expectedPeerList.has(peer) && peer != id)
+        if (expectedPeerList.has(peer) && peer != myID)
             groupLeft.activate(peer)
 }
 
@@ -27,18 +27,18 @@ export default async function() {
 
         while (inGroup())
             try {
-                const updatedPeerList = await ipfs.pubsub.peers(roomID())
+                const updatedPeerList = await ipfs.pubsub.peers(roomID()!)
 
                 switch (status) {
                     case ConnectionStatus.WAITING_FOR_GROUP:
                         const peersJoined = updatedPeerList.filter(peer => !peersInRoom.has(peer))
 
                         for (const peer of peersJoined) {
-                            if (peer == id) continue // don't track self
+                            if (peer == myID) continue // don't track self
 
                             if (!groupPeerIDs().has(peer))
                                 throw buildError(Errors.UNEXPECTED_PEER, { peer })
-                            
+
                             peersInRoom.add(peer)
                         }
 
