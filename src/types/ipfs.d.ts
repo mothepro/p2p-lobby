@@ -162,7 +162,7 @@ declare module 'ipfs' {
     namespace Ipfs {
         export interface Message {
             data: Buffer
-            from: Buffer
+            from: PeerID
             seqno: Buffer
             topicIDs: string[]
         }

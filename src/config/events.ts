@@ -1,6 +1,6 @@
 import Emitter from 'fancy-emitter'
 import {PeerID} from 'ipfs'
-import {allPeerGroups, ConnectionStatus, inGroup, leaderId, lobbyPeerIDs, resetLeaderId, setStatus, groupPeerIDs} from './constants'
+import {ConnectionStatus, inGroup, lobbyPeerIDs, myGroupPeerIDs, myID, resetLeaderId, setStatus} from './constants'
 
 /** Some error sas throw... */
 // TODO Replace with deactivations.
@@ -33,6 +33,17 @@ export const groupJoin = new Emitter<PeerID>()
 export const groupLeft = new Emitter<PeerID>()
 /** A peer has joined or left my group */
 export const groupChange = Emitter.merge({ groupJoin, groupLeft })
+/** A group leader has asked you to join their group */
+export const groupInvite = new Emitter<{
+    leader: PeerID
+    members: Set<PeerID>
+    confirmation(accept: boolean): void
+}>()
+/** A peer has requested to join your group */
+export const groupRequest = new Emitter<{
+    peer: PeerID
+    confirmation(accept: boolean): void
+}>()
 /** The group leader has requested to move group members to a private room */
 export const groupReadyInit = new Emitter<any>()
 /** Connected to private room which will soon have all group members */
@@ -43,9 +54,6 @@ export const groupReady = new Emitter
 // Update peers in the lobby
 lobbyChange.onContinueAfterError(({ name, value }) => (name == 'lobbyJoin' ? lobbyPeerIDs.add : lobbyPeerIDs.delete)(value))
 
-// Set a peer in my group, or remove them from any group in general groups
-groupChange.onContinueAfterError(({ name, value }) => allPeerGroups.set(value, name == 'groupJoin' ? leaderId : ''))
-
 // Update status when group is ready
 groupReady.onContinueAfterError(() => setStatus(ConnectionStatus.IN_ROOM))
 
@@ -55,6 +63,7 @@ groupDone.onContinueAfterError(() => resetLeaderId())
 
 // Activate `join` for all peer's in group after starting
 groupStart.onContinueAfterError(() => {
-    for (const peer of groupPeerIDs())
-        groupJoin.activate(peer)
+    for (const peer of myGroupPeerIDs())
+        if (peer != myID)
+            groupJoin.activate(peer)
 })

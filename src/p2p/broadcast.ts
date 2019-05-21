@@ -6,9 +6,9 @@ import {data as dataEmitter} from '../config/events'
 
 /**
  * `Pack`s and Broadcasts data to all peers in the room.
- * 
- * Calls the message listener on given data for self
- * which will eventually be called by the other peers.
+ *
+ * If successful, the sent message is handled,
+ * as if we have just received something from ourselves.
  */
 export default async function(data: any) {
     if (roomID())

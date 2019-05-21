@@ -48,8 +48,11 @@ export const isConnected = () =>
 /** ID's of all we have ever met and their name. */
 export const allPeerNames: Map<PeerID, NameType> = new Map
 
-/** ID's of all peers and their group leader's id. */
-export const allPeerGroups: Map<PeerID, PeerID> = new Map
+/** The peers and the ID of the leader of the group they wanna be in. */
+export const allGroupRequests: Map<PeerID, PeerID> = new Map
+
+/** The group leaders and the members of their group */
+export const allGroupInvites: Map<PeerID, Set<PeerID>> = new Map
 
 /** ID's of all peers in lobby. */
 export const lobbyPeerIDs: Set<PeerID> = new Set
@@ -74,21 +77,41 @@ export let LOBBY_ID: RoomID
 /** Whether or not the current leader of a group. */
 export const isLeader = () => isConnected() && myID == leaderId
 
-/** Whether or not in a group. */
-export const inGroup = () => !!groupPeerIDs().size
+/**
+ * All the groups which have been formed in the lobby.
+ *
+ * To be in a group the peer must be invited and also send a request for the group.
+ * Either the peer or the leader can change their status,
+ * leaving or kicking the peer from the group respectively.
+ */
+export function allGroups(): Map<PeerID, Set<PeerID>> {
+    const groups = new Map
 
-/** ID's of MY group members. */
-export function groupPeerIDs(): ReadonlySet<PeerID> {
-    const group = new Set
-    if (leaderId) // Only do this if already in a group
-        for (const [peer, leader] of allPeerGroups)
-            if (leader == leaderId)
-                group.add(peer)
-    return group
+    // Remove peers which haven't requested to be in the group
+    for (const [leader, peers] of allGroupInvites) {
+        const members = new Set
+
+        for (const peer of peers)
+            if (leader == allGroupRequests.get(peer))
+                members.add(peer)
+
+
+        // If there are members add the leader and return the group
+        if (members.size)
+            groups.set(leader, members.add(leader))
+    }
+
+    return groups
 }
 
+/** Whether or not in a group. */
+export const inGroup = () => !!myGroupPeerIDs().size
+
+/** ID's of MY group members. */
+export function myGroupPeerIDs(): ReadonlySet<PeerID> { return allGroups().get(leaderId) || new Set }
+
 /** ID's of MY group members and their name. */
-export function groupPeerNames() { return peersInSet(groupPeerIDs()) }
+export function myGroupPeerNames() { return peersInSet(myGroupPeerIDs()) }
 
 /** The ID of the IPFS room we are currently connected to. */
 export function roomID(): RoomID | undefined {
@@ -112,11 +135,11 @@ function peersInSet(set: ReadonlySet<PeerID>): Map<PeerID, NameType> {
 }
 
 /** Create a P2P Node if one hasn't been created already. */
-export function initialize<T>(myName: T, pkg: string, ipfsOptions?: Partial<IPFSOptions>) {
+export function initialize<T>(name: T, pkg: string, ipfsOptions?: Partial<IPFSOptions>) {
     if (myName || LOBBY_ID)
         throw buildError(Errors.NO_REINITIALIZE)
 
-    myName = myName
+    myName = name
     LOBBY_ID = `${pkg}_lobby_${version}`
 
     if (!ipfs)
