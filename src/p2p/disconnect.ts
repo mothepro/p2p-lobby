@@ -9,10 +9,10 @@ import {
     lobbyPeerIDs,
     resetLeaderId,
     roomID,
-    setStatus,
     setId,
+    setStatus,
 } from '../config/constants'
-import msgListener from './messageListener'
+import msgListener from './listener'
 
 /** Leaves a room we are connected to, if any. */
 export async function leaveRoom(roomId = roomID()) {

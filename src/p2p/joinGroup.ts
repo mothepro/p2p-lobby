@@ -10,7 +10,7 @@ import {
     resetLeaderId,
     status,
 } from '../config/constants'
-import {groupJoin, groupStart} from '../config/events'
+import {groupStart} from '../config/events'
 import {Introduction} from '../messages'
 import broadcast from './broadcast'
 
@@ -32,9 +32,7 @@ export default async function(peer: PeerID) {
         allPeerGroups.set(peer, peer)
     resetLeaderId(peer)
 
-    groupStart.activate()
-    for (const peer of groupPeerIDs())
-        groupJoin.activate(peer)
+    groupStart.activate() // TODO double check this
 
     return broadcast(new Introduction(name, leaderId, false))
 }
