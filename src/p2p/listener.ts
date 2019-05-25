@@ -40,8 +40,6 @@ export function handleMessage(peer: PeerID, data: any) {
 
 /** Listener for data sent over the wire from **another** peer. */
 export default async function({ from, data }: Message) {
-    if (from == myID)
-        return
-
-    return handleMessage(from, unpack(data))
+    if (from != myID)
+        return handleMessage(from, unpack(data))
 }

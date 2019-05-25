@@ -1,7 +1,6 @@
 import {PeerID} from 'ipfs'
 import Errors, {buildError} from '../../config/errors'
-import {allPeerGroups, ConnectionStatus, leaderId, LOBBY_ID, lobbyPeerIDs, setStatus} from '../../config/constants'
-import {leaveRoom} from '../disconnect'
+import {ConnectionStatus, leaderId, LOBBY_ID, lobbyPeerIDs, setStatus, allGroupRequests, allGroups} from '../../config/constants'
 import pollRoom from '../pollRoom'
 import {seedInt} from '../../util/rng'
 import hash from '../../util/hash'
@@ -19,7 +18,7 @@ export default async function (peer: PeerID, data: ReadyUp) {
                 throw buildError(Errors.LIST_MISMATCH)
             seedInt(data.hash)
             groupReadyInit.activate(data.info)
-            await leaveRoom(LOBBY_ID)
+            await ipfs.pubsub.unsubscribe(LOBBY_ID, listener)
             await ipfs.pubsub.subscribe(leaderId, listener, { discover: true })
             groupConnect.activate()
             setStatus(ConnectionStatus.WAITING_FOR_GROUP)
@@ -29,10 +28,9 @@ export default async function (peer: PeerID, data: ReadyUp) {
             throw e
         }
     else // Clean lobby of groups we know are leaving
-        for (const [other, leader] of allPeerGroups)
-            if (leader == peer) {
-                lobbyPeerIDs.delete(other)
-                allPeerGroups
-                lobbyLeft.activate(other)
+        if (allGroups().has(peer))
+            for (const leaver of allGroups().get(peer)) {
+                lobbyPeerIDs.delete(leaver)
+                lobbyLeft.activate(leaver)
             }
 }
