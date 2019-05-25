@@ -1,4 +1,4 @@
-import {Message} from 'ipfs'
+import {Message, PeerID} from 'ipfs'
 import {unpack} from '../packer'
 import {allPeerNames, ConnectionStatus, myID, roomID, status} from '../config/constants'
 import Errors, {buildError} from '../config/errors'
@@ -7,18 +7,11 @@ import Introduction from '../messages/Introduction'
 import Invite from '../messages/Invite'
 import ReadyUp from '../messages/ReadyUp'
 import handleIntroduction from './handlers/introduction'
+import handleReadyUp from './handlers/readyup'
 import broadcast from './broadcast'
 
-/**
- * Listener for data sent over the wire.
- * *This does **not** include messages that from self.*
- */
-export default async function({ from: peer, data: raw }: Message) {
-    if (peer == myID)
-        return
-
-    const data = unpack(raw)
-
+/** Handles a message from **any** peer. */
+export function handleMessage(peer: PeerID, data: any) {
     switch (status) {
         case ConnectionStatus.IN_ROOM:
             dataEmitter.activate({ data, peer })
@@ -35,13 +28,20 @@ export default async function({ from: peer, data: raw }: Message) {
                         return handleIntroduction(peer, data)
 
                     case ReadyUp:
-                        handleReadyUp(peer, data)
-                        return
+                        return handleReadyUp(peer, data)
 
-                    case Invite:
-                        return handleInvite(peer, data)
+                    // case Invite:
+                    //     return handleInvite(peer, data)
                 }
     }
 
     throw buildError(Errors.UNEXPECTED_MESSAGE, { peer, data, roomID: roomID()! })
+}
+
+/** Listener for data sent over the wire from **another** peer. */
+export default async function({ from, data }: Message) {
+    if (from == myID)
+        return
+
+    return handleMessage(from, unpack(data))
 }

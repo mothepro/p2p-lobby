@@ -1,6 +1,5 @@
 import {PeerID} from 'ipfs'
 import Errors, {buildError} from '../../config/errors'
-import {ReadyUpInfo} from '../../messages'
 import {allPeerGroups, ConnectionStatus, leaderId, LOBBY_ID, lobbyPeerIDs, setStatus} from '../../config/constants'
 import {leaveRoom} from '../disconnect'
 import pollRoom from '../pollRoom'
@@ -9,8 +8,9 @@ import hash from '../../util/hash'
 import ipfs from '../ipfs'
 import {groupConnect, groupReadyInit, lobbyLeft} from '../../config/events'
 import listener from '../listener'
+import ReadyUp from '../../messages/ReadyUp'
 
-export default async function (peer: PeerID, data: ReadyUpInfo<any>) {
+export default async function (peer: PeerID, data: ReadyUp) {
     if (peer == leaderId) // My group is ready
         try {
             setStatus(ConnectionStatus.JOINING)
